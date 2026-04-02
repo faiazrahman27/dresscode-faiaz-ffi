@@ -10,6 +10,14 @@ import usecaseBrand from '../assets/home/usecase-brand.jpg'
 import usecaseEvent from '../assets/home/usecase-event.jpg'
 import ctaBanner from '../assets/home/cta-banner.jpg'
 
+import heroGarmentTag from '../assets/home/hero-garment-tag.jpg'
+import wearableStepScan from '../assets/home/wearable-step-scan.jpg'
+import wearableStepActivation from '../assets/home/wearable-step-activation.jpg'
+import wearableStepLivePage from '../assets/home/wearable-step-live-page.jpg'
+import usecaseFashionTag from '../assets/home/usecase-fashion-tag.jpg'
+import usecaseMerchDrop from '../assets/home/usecase-merch-drop.jpg'
+import ctaWearableBanner from '../assets/home/cta-wearable-banner.jpg'
+
 const fadeUp = {
   hidden: { opacity: 0, y: 22 },
   visible: { opacity: 1, y: 0 },
@@ -30,26 +38,48 @@ const features = [
   },
 ]
 
+const storyMoments = [
+  {
+    title: 'A garment becomes the entry point',
+    text: 'The experience no longer starts on a website. It starts on the product itself — on the tag, the label, the uniform, the piece of merchandise someone is already holding.',
+    image: heroGarmentTag,
+  },
+  {
+    title: 'A scan opens the second layer',
+    text: 'One scan turns fabric into media. What looked physical a moment ago becomes interactive, personal, branded, and live.',
+    image: wearableStepScan,
+  },
+  {
+    title: 'Activation creates ownership',
+    text: 'With a scratch code and account flow, the product is not only seen — it is claimed. That is where utility becomes identity.',
+    image: wearableStepActivation,
+  },
+]
+
 const steps = [
   {
     no: '01',
     title: 'Scan',
     text: 'A visitor scans the QR code embedded into the product or garment.',
+    image: heroCard1,
   },
   {
     no: '02',
     title: 'Activate',
     text: 'The owner claims the item using the scratch code and account verification flow.',
+    image: wearableStepActivation,
   },
   {
     no: '03',
     title: 'Build',
     text: 'The user customizes the public page with media, links, and profile content.',
+    image: heroCard2,
   },
   {
     no: '04',
     title: 'Share',
     text: 'Future scans open the live experience instantly with analytics and content control.',
+    image: wearableStepLivePage,
   },
 ]
 
@@ -60,15 +90,34 @@ const useCases = [
     image: usecaseAthlete,
   },
   {
+    title: 'Fashion and branded apparel',
+    text: 'Transform garments into connected storytelling surfaces with identity, activation, and digital presence.',
+    image: usecaseFashionTag,
+  },
+  {
     title: 'Brands and drops',
     text: 'Connect products to launch pages, authentication, campaign media, and collectible storytelling.',
     image: usecaseBrand,
+  },
+  {
+    title: 'Merchandise and collectible releases',
+    text: 'Make limited pieces feel alive through linked media, ownership journeys, and post-purchase engagement.',
+    image: usecaseMerchDrop,
   },
   {
     title: 'Events and staff',
     text: 'Give uniforms, badges, and event items a digital layer for profile access and live information.',
     image: usecaseEvent,
   },
+]
+
+const platformSignals = [
+  'Wearable media for garments and merchandise',
+  'QR + scratch activation tied to ownership',
+  'Editable live identity pages for open codes',
+  'Locked official content for brands and organizations',
+  'Scan analytics and role-based management',
+  'A digital layer that starts from the real-world product',
 ]
 
 export default function Home() {
@@ -81,7 +130,7 @@ export default function Home() {
         <div className="hero-orb orb-2" />
 
         <div className="container">
-          <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr] xl:items-center">
+          <div className="grid gap-8 xl:grid-cols-[1.02fr_0.98fr] xl:items-center">
             <motion.div
               variants={fadeUp}
               initial="hidden"
@@ -96,8 +145,9 @@ export default function Home() {
               </h1>
 
               <p className="lead mb-8 max-w-2xl">
-                Dresscode connects physical products to dynamic profile pages,
-                secure activation, analytics, and branded digital experiences.
+                Dresscode connects physical products to dynamic profile pages, secure
+                activation, analytics, and branded digital experiences. It is built for
+                wearable media — where the story starts on the item itself.
               </p>
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -170,15 +220,15 @@ export default function Home() {
                   <div className="glass-card overflow-hidden p-3">
                     <div className="group relative overflow-hidden rounded-[22px]">
                       <img
-                        src={heroCard1}
-                        alt="QR scan on fashion item"
+                        src={heroGarmentTag}
+                        alt="Garment tag with QR identity"
                         className="h-[220px] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/80 via-transparent to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <div className="font-semibold">Scan the product</div>
+                        <div className="font-semibold">Start from the garment</div>
                         <div className="text-sm text-white/70">
-                          Start from the garment itself
+                          The wearable item becomes the first screen
                         </div>
                       </div>
                     </div>
@@ -195,7 +245,7 @@ export default function Home() {
                       <div className="absolute bottom-0 left-0 right-0 p-4">
                         <div className="font-semibold">Open the live page</div>
                         <div className="text-sm text-white/70">
-                          Socials, media, official content
+                          Media, identity, links, and official content
                         </div>
                       </div>
                     </div>
@@ -203,6 +253,49 @@ export default function Home() {
                 </div>
               </div>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-tight">
+        <div className="container">
+          <div className="mb-10 max-w-3xl">
+            <div className="eyebrow mb-4">Story first</div>
+            <h2 className="section-title mb-4">
+              The product is no longer the end of the journey — it is the beginning
+            </h2>
+            <p className="lead">
+              A shirt, a jersey, a badge, a drop, a collectible piece. What used to stop
+              at the physical object can now continue into identity, ownership, updates,
+              and branded storytelling.
+            </p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {storyMoments.map((item, index) => (
+              <motion.div
+                key={item.title}
+                className="surface-card overflow-hidden p-3"
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 0.45, delay: index * 0.08 }}
+              >
+                <div className="group overflow-hidden rounded-[24px]">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-[250px] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                  />
+                </div>
+
+                <div className="p-4">
+                  <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
+                  <p className="text-sm leading-7 text-white/65">{item.text}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -242,6 +335,26 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="section-tight">
+        <div className="container">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {platformSignals.map((item, index) => (
+              <motion.div
+                key={item}
+                className="surface-card p-5"
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.25 }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+              >
+                <div className="text-base leading-7 text-white/72">{item}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="container">
           <div className="mb-12 max-w-3xl">
@@ -250,16 +363,30 @@ export default function Home() {
               A simple flow with real control behind it
             </h2>
             <p className="lead">
-              From scan to activation to editing, Dresscode makes a physical item behave like a live digital identity.
+              From scan to activation to editing, Dresscode makes a physical item behave
+              like a live digital identity.
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {steps.map((step) => (
-              <div key={step.no} className="surface-card group p-6 transition duration-300 hover:translate-y-[-4px]">
-                <div className="display mb-5 text-4xl font-bold text-[#5ECFCF]">{step.no}</div>
-                <h3 className="mb-3 text-xl font-semibold">{step.title}</h3>
-                <p className="text-sm leading-7 text-white/62">{step.text}</p>
+              <div
+                key={step.no}
+                className="surface-card group overflow-hidden p-3 transition duration-300 hover:translate-y-[-4px]"
+              >
+                <div className="overflow-hidden rounded-[20px]">
+                  <img
+                    src={step.image}
+                    alt={step.title}
+                    className="h-[190px] w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                  />
+                </div>
+
+                <div className="p-3">
+                  <div className="display mb-4 text-4xl font-bold text-[#5ECFCF]">{step.no}</div>
+                  <h3 className="mb-3 text-xl font-semibold">{step.title}</h3>
+                  <p className="text-sm leading-7 text-white/62">{step.text}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -274,11 +401,11 @@ export default function Home() {
               Fashion-tech infrastructure for multiple worlds
             </h2>
             <p className="lead">
-              Built for creators, athletes, brands, events, and collectible ecosystems.
+              Built for creators, athletes, brands, events, merchandise systems, and collectible ecosystems.
             </p>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {useCases.map((item, index) => (
               <motion.div
                 key={item.title}
@@ -310,21 +437,34 @@ export default function Home() {
       <section className="section">
         <div className="container">
           <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr] xl:items-center">
-            <div className="glass-card overflow-hidden p-3">
-              <div className="group relative overflow-hidden rounded-[26px]">
-                <img
-                  src={ctaBanner}
-                  alt="Dresscode call to action"
-                  className="h-[420px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
-                    Ready to build
+            <div className="grid gap-4">
+              <div className="glass-card overflow-hidden p-3">
+                <div className="group relative overflow-hidden rounded-[26px]">
+                  <img
+                    src={ctaWearableBanner}
+                    alt="Dresscode wearable merchandise call to action"
+                    className="h-[260px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
+                      Wearable future
+                    </div>
+                    <div className="text-2xl font-bold">
+                      Merchandise with a second life
+                    </div>
                   </div>
-                  <div className="text-2xl font-bold">
-                    Launch a live QR identity experience
-                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card overflow-hidden p-3">
+                <div className="group relative overflow-hidden rounded-[26px]">
+                  <img
+                    src={ctaBanner}
+                    alt="Dresscode call to action"
+                    className="h-[140px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
                 </div>
               </div>
             </div>
@@ -335,7 +475,8 @@ export default function Home() {
                 Activate products, publish profiles, and manage official content
               </h2>
               <p className="lead mb-8">
-                Your foundation is already working. The next step is turning it into a polished public platform.
+                Your foundation is already working. The next step is turning it into a
+                polished public platform that makes wearable media instantly understandable.
               </p>
 
               <div className="grid gap-4 sm:grid-cols-2">
