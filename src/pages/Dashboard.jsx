@@ -755,16 +755,15 @@ export default function Dashboard() {
 
             <div className="grid gap-6 xl:grid-cols-[290px_minmax(0,1fr)]">
               <div className="dashboard-sidebar-wrap reveal-scale">
-                <div className="dashboard-sidebar-shell tilt-card">
-                  <div className="tilt-inner">
-                    <DashboardSidebar
-                      profile={profile}
-                      activeTab={activeTab}
-                      onChangeTab={setActiveTab}
-                    />
-                  </div>
-                </div>
+                <div className="dashboard-sidebar-shell">
+                  <DashboardSidebar
+                    profile={profile}
+                    activeTab={activeTab}
+                    onChangeTab={setActiveTab}
+                />
               </div>
+            </div>
+
 
               <div className="dashboard-main-wrap">
                 {renderMainPanel()}

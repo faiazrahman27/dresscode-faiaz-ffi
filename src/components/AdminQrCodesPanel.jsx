@@ -138,25 +138,11 @@ export default function AdminQrCodesPanel({
       })
     }
 
-    if (filter === 'pending') {
-      rows = rows.filter((row) => row.activated === false)
-    }
-
-    if (filter === 'redeemed') {
-      rows = rows.filter((row) => row.activated === true)
-    }
-
-    if (filter === 'open') {
-      rows = rows.filter((row) => row.code_type === 'open')
-    }
-
-    if (filter === 'locked') {
-      rows = rows.filter((row) => row.code_type === 'locked')
-    }
-
-    if (filter === 'templated') {
-      rows = rows.filter((row) => Boolean(row.template_id))
-    }
+    if (filter === 'pending') rows = rows.filter((row) => row.activated === false)
+    if (filter === 'redeemed') rows = rows.filter((row) => row.activated === true)
+    if (filter === 'open') rows = rows.filter((row) => row.code_type === 'open')
+    if (filter === 'locked') rows = rows.filter((row) => row.code_type === 'locked')
+    if (filter === 'templated') rows = rows.filter((row) => Boolean(row.template_id))
 
     rows.sort((a, b) => {
       if (sortBy === 'created_desc') {
@@ -245,9 +231,11 @@ export default function AdminQrCodesPanel({
 
     onCreated(Array.isArray(data) ? data : [data])
     const createdRow = Array.isArray(data) ? data[0] : data
+
     if (createdRow?.id) {
       setSelectedQrId(createdRow.id)
       setExpandedIds((prev) => [...new Set([...prev, createdRow.id])])
+      await drawPreview(createdRow.code)
     }
 
     setFeedback('QR code created successfully.')
@@ -303,6 +291,7 @@ export default function AdminQrCodesPanel({
     if (data?.length) {
       setSelectedQrId(data[0].id)
       setExpandedIds((prev) => [...new Set([...prev, data[0].id])])
+      await drawPreview(data[0].code)
     }
 
     setFeedback(`${data?.length || 0} QR codes created successfully.`)
@@ -349,6 +338,7 @@ export default function AdminQrCodesPanel({
     }
 
     onDeleted(qrCodeId)
+
     if (selectedQrId === qrCodeId) {
       setSelectedQrId('')
       if (canvasRef.current) {
@@ -356,6 +346,7 @@ export default function AdminQrCodesPanel({
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
       }
     }
+
     setExpandedIds((prev) => prev.filter((id) => id !== qrCodeId))
     setFeedback('QR code deleted successfully.')
   }
@@ -386,379 +377,418 @@ export default function AdminQrCodesPanel({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-      <div className="surface-card p-6">
-        <div className="eyebrow mb-4">Admin</div>
-        <h2 className="display mb-6 text-3xl font-bold">Create QR Codes</h2>
+    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="grid gap-6">
+        <div className="surface-card h-fit p-6">
+          <div className="eyebrow mb-4">Admin</div>
+          <h2 className="display mb-6 text-3xl font-bold">Create QR Codes</h2>
 
-        <div className="mb-5 flex gap-2">
-          <button
-            type="button"
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              mode === 'single'
-                ? 'bg-[#5ECFCF] text-[#071515]'
-                : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-            }`}
-            onClick={() => setMode('single')}
-          >
-            Single
-          </button>
-          <button
-            type="button"
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              mode === 'bulk'
-                ? 'bg-[#5ECFCF] text-[#071515]'
-                : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-            }`}
-            onClick={() => setMode('bulk')}
-          >
-            Bulk
-          </button>
-        </div>
+          <div className="mb-5 flex gap-2">
+            <button
+              type="button"
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                mode === 'single'
+                  ? 'bg-[#5ECFCF] text-[#071515]'
+                  : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+              }`}
+              onClick={() => setMode('single')}
+            >
+              Single
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                mode === 'bulk'
+                  ? 'bg-[#5ECFCF] text-[#071515]'
+                  : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+              }`}
+              onClick={() => setMode('bulk')}
+            >
+              Bulk
+            </button>
+          </div>
 
-        {mode === 'single' ? (
-          <form onSubmit={handleCreate} className="grid gap-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Code Prefix</label>
-              <input
-                type="text"
-                className="field"
-                value={form.prefix}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
-                }
-                placeholder="DC"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Public Code</label>
-              <div className="flex gap-2">
+          {mode === 'single' ? (
+            <form onSubmit={handleCreate} className="grid gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Code Prefix</label>
                 <input
                   type="text"
                   className="field"
-                  value={form.code}
+                  value={form.prefix}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))
+                    setForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
                   }
-                  placeholder="DC-XXXXXX-XXXX"
+                  placeholder="DC"
                 />
-                <button type="button" className="btn btn-ghost" onClick={regenerateCode}>
-                  Regenerate
-                </button>
               </div>
-            </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium">Scratch Code</label>
-              <div className="flex gap-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Public Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="field min-w-0"
+                    value={form.code}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))
+                    }
+                    placeholder="DC-XXXXXX-XXXX"
+                  />
+                  <button type="button" className="btn btn-ghost shrink-0" onClick={regenerateCode}>
+                    Regenerate
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Scratch Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="field min-w-0"
+                    value={form.scratch_code}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        scratch_code: e.target.value.toUpperCase(),
+                      }))
+                    }
+                    placeholder="XXXX-XXXX-XXXX"
+                  />
+                  <button type="button" className="btn btn-ghost shrink-0" onClick={regenerateScratch}>
+                    Regenerate
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Label</label>
                 <input
                   type="text"
                   className="field"
-                  value={form.scratch_code}
+                  value={form.label}
+                  onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
+                  placeholder="Campaign / player / item label"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Code Type</label>
+                <select
+                  className="field"
+                  value={form.code_type}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      scratch_code: e.target.value.toUpperCase(),
+                      code_type: e.target.value,
+                      template_id: e.target.value === 'locked' ? prev.template_id : '',
                     }))
                   }
-                  placeholder="XXXX-XXXX-XXXX"
-                />
-                <button type="button" className="btn btn-ghost" onClick={regenerateScratch}>
-                  Regenerate
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Label</label>
-              <input
-                type="text"
-                className="field"
-                value={form.label}
-                onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
-                placeholder="Campaign / player / item label"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Code Type</label>
-              <select
-                className="field"
-                value={form.code_type}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    code_type: e.target.value,
-                    template_id: e.target.value === 'locked' ? prev.template_id : '',
-                  }))
-                }
-              >
-                <option value="open">Open</option>
-                <option value="locked">Locked</option>
-              </select>
-            </div>
-
-            {form.code_type === 'locked' ? (
-              <div>
-                <label className="mb-2 block text-sm font-medium">Template</label>
-                <select
-                  className="field"
-                  value={form.template_id}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, template_id: e.target.value }))
-                  }
                 >
-                  <option value="">Select a template</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
+                  <option value="open">Open</option>
+                  <option value="locked">Locked</option>
                 </select>
               </div>
-            ) : null}
 
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Creating...' : 'Create QR Code'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleBulkCreate} className="grid gap-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                max="500"
-                className="field"
-                value={bulkForm.count}
-                onChange={(e) =>
-                  setBulkForm((prev) => ({ ...prev, count: e.target.value }))
-                }
-                placeholder="10"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Code Prefix</label>
-              <input
-                type="text"
-                className="field"
-                value={bulkForm.prefix}
-                onChange={(e) =>
-                  setBulkForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
-                }
-                placeholder="DC"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Label Prefix</label>
-              <input
-                type="text"
-                className="field"
-                value={bulkForm.labelPrefix}
-                onChange={(e) =>
-                  setBulkForm((prev) => ({ ...prev, labelPrefix: e.target.value }))
-                }
-                placeholder="Team Drop / Player / Batch"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Code Type</label>
-              <select
-                className="field"
-                value={bulkForm.code_type}
-                onChange={(e) =>
-                  setBulkForm((prev) => ({
-                    ...prev,
-                    code_type: e.target.value,
-                    template_id: e.target.value === 'locked' ? prev.template_id : '',
-                  }))
-                }
-              >
-                <option value="open">Open</option>
-                <option value="locked">Locked</option>
-              </select>
-            </div>
-
-            {bulkForm.code_type === 'locked' ? (
-              <div>
-                <label className="mb-2 block text-sm font-medium">Template</label>
-                <select
-                  className="field"
-                  value={bulkForm.template_id}
-                  onChange={(e) =>
-                    setBulkForm((prev) => ({ ...prev, template_id: e.target.value }))
-                  }
-                >
-                  <option value="">Select a template</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-
-            <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Creating...' : 'Create Bulk QR Codes'}
-            </button>
-
-            <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/62">
-              Bulk generation creates unique public codes and scratch codes automatically.
-              Maximum: 500 at a time.
-            </div>
-          </form>
-        )}
-
-        {lastBulkCreated.length ? (
-          <div className="mt-6 rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4">
-            <div className="mb-3 text-sm font-semibold text-[#5ECFCF]">
-              Last bulk result (first 3)
-            </div>
-            <div className="grid gap-3">
-              {lastBulkCreated.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-3 text-sm"
-                >
-                  <div className="font-semibold">{item.label || item.code}</div>
-                  <div className="text-white/55">{item.code}</div>
-                  <div className="text-white/55">Scratch: {item.scratch_code}</div>
+              {form.code_type === 'locked' ? (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Template</label>
+                  <select
+                    className="field"
+                    value={form.template_id}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, template_id: e.target.value }))
+                    }
+                  >
+                    <option value="">Select a template</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ))}
+              ) : null}
+
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Creating...' : 'Create QR Code'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleBulkCreate} className="grid gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  className="field"
+                  value={bulkForm.count}
+                  onChange={(e) =>
+                    setBulkForm((prev) => ({ ...prev, count: e.target.value }))
+                  }
+                  placeholder="10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Code Prefix</label>
+                <input
+                  type="text"
+                  className="field"
+                  value={bulkForm.prefix}
+                  onChange={(e) =>
+                    setBulkForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
+                  }
+                  placeholder="DC"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Label Prefix</label>
+                <input
+                  type="text"
+                  className="field"
+                  value={bulkForm.labelPrefix}
+                  onChange={(e) =>
+                    setBulkForm((prev) => ({ ...prev, labelPrefix: e.target.value }))
+                  }
+                  placeholder="Team Drop / Player / Batch"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Code Type</label>
+                <select
+                  className="field"
+                  value={bulkForm.code_type}
+                  onChange={(e) =>
+                    setBulkForm((prev) => ({
+                      ...prev,
+                      code_type: e.target.value,
+                      template_id: e.target.value === 'locked' ? prev.template_id : '',
+                    }))
+                  }
+                >
+                  <option value="open">Open</option>
+                  <option value="locked">Locked</option>
+                </select>
+              </div>
+
+              {bulkForm.code_type === 'locked' ? (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Template</label>
+                  <select
+                    className="field"
+                    value={bulkForm.template_id}
+                    onChange={(e) =>
+                      setBulkForm((prev) => ({ ...prev, template_id: e.target.value }))
+                    }
+                  >
+                    <option value="">Select a template</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Creating...' : 'Create Bulk QR Codes'}
+              </button>
+
+              <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/62">
+                Bulk generation creates unique public codes and scratch codes automatically.
+                Maximum: 500 at a time.
+              </div>
+            </form>
+          )}
+
+          {lastBulkCreated.length ? (
+            <div className="mt-6 rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4">
+              <div className="mb-3 text-sm font-semibold text-[#5ECFCF]">
+                Last bulk result (first 3)
+              </div>
+              <div className="grid gap-3">
+                {lastBulkCreated.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-3 text-sm"
+                  >
+                    <div className="font-semibold break-words">{item.label || item.code}</div>
+                    <div className="break-all text-white/55">{item.code}</div>
+                    <div className="break-all text-white/55">Scratch: {item.scratch_code}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="surface-card p-6 min-w-0">
+          <div className="eyebrow mb-4">QR preview</div>
+          <h2 className="display mb-4 break-all text-2xl font-bold">
+            {selectedQr ? selectedQr.code : 'Select a QR code'}
+          </h2>
+
+          <div className="flex flex-col gap-5 min-w-0">
+            <div className="self-start rounded-[20px] border border-[rgba(94,207,207,0.12)] bg-white p-4">
+              <canvas ref={canvasRef} width={240} height={240} />
+            </div>
+
+            <div className="min-w-0 text-sm leading-7 text-white/62">
+              {selectedQr ? (
+                <div className="grid gap-2 min-w-0">
+                  <div className="break-all">
+                    <strong>Public URL:</strong> {window.location.origin}/p/{selectedQr.code}
+                  </div>
+                  <div className="break-all">
+                    <strong>Scratch Code:</strong> {selectedQr.scratch_code}
+                  </div>
+                  <div>
+                    <strong>Type:</strong> {selectedQr.code_type}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {selectedQr.activated ? 'Redeemed' : 'Pending'}
+                  </div>
+                  <div>
+                    <strong>Created:</strong> {formatDate(selectedQr.created_at)}
+                  </div>
+                </div>
+              ) : (
+                'Click Preview on any QR code to render it here.'
+              )}
             </div>
           </div>
-        ) : null}
+        </div>
       </div>
 
-      <div className="grid gap-6">
-        <div className="surface-card p-6">
-          <div className="mb-5 flex flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="eyebrow mb-3">Admin list</div>
-                <h2 className="display text-3xl font-bold">QR Codes</h2>
-              </div>
+      <div className="surface-card p-6 min-w-0">
+        <div className="mb-5 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="eyebrow mb-3">Admin list</div>
+              <h2 className="display text-3xl font-bold">QR Codes</h2>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => exportCsv(filteredQrCodes)}
+            >
+              Export Filtered CSV
+            </button>
+          </div>
+
+          <div className="grid gap-3">
+            <input
+              type="text"
+              className="field"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by code, scratch, label, type, template..."
+            />
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFilter('all')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'all'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                All ({counts.all})
+              </button>
 
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={() => exportCsv(filteredQrCodes)}
+                onClick={() => setFilter('pending')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'pending'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
               >
-                Export Filtered CSV
+                Pending ({counts.pending})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('redeemed')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'redeemed'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                Redeemed ({counts.redeemed})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('open')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'open'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                Open
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('locked')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'locked'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                Locked
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFilter('templated')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'templated'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                Templated
               </button>
             </div>
 
-            <div className="grid gap-3">
-              <input
-                type="text"
+            <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
+              <select
                 className="field"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by code, scratch, label, type, template..."
-              />
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+                <option value="label_asc">Label A-Z</option>
+                <option value="label_desc">Label Z-A</option>
+                <option value="code_asc">Code A-Z</option>
+                <option value="code_desc">Code Z-A</option>
+              </select>
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFilter('all')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'all'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  All ({counts.all})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilter('pending')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'pending'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  Pending ({counts.pending})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilter('redeemed')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'redeemed'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  Redeemed ({counts.redeemed})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilter('open')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'open'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  Open
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilter('locked')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'locked'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  Locked
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFilter('templated')}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                    filter === 'templated'
-                      ? 'bg-[#5ECFCF] text-[#071515]'
-                      : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
-                  }`}
-                >
-                  Templated
-                </button>
-              </div>
-
-              <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
-                <select
-                  className="field"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="created_desc">Newest First</option>
-                  <option value="created_asc">Oldest First</option>
-                  <option value="label_asc">Label A-Z</option>
-                  <option value="label_desc">Label Z-A</option>
-                  <option value="code_asc">Code A-Z</option>
-                  <option value="code_desc">Code Z-A</option>
-                </select>
-
-                <div className="text-sm text-white/52 flex items-center">
-                  Showing {pagedQrCodes.length} of {filteredQrCodes.length} matching codes
-                </div>
+              <div className="flex items-center text-sm text-white/52">
+                Showing {pagedQrCodes.length} of {filteredQrCodes.length} matching codes
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="grid gap-4">
+        <div className="max-h-[900px] overflow-y-auto pr-2">
+          <div className="grid gap-4 min-w-0">
             {pagedQrCodes.length ? (
               pagedQrCodes.map((item) => {
                 const expanded = expandedIds.includes(item.id)
@@ -766,25 +796,39 @@ export default function AdminQrCodesPanel({
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-[18px] border p-4 ${
+                    className={`rounded-[18px] border p-4 min-w-0 ${
                       selectedQrId === item.id
                         ? 'border-[rgba(94,207,207,0.3)] bg-[rgba(94,207,207,0.06)]'
                         : 'border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)]'
                     }`}
                   >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                      <div>
-                        <div className="font-semibold">{item.label || item.code}</div>
-                        <div className="mt-1 text-sm text-white/55">{item.code}</div>
-                        <div className="mt-2 text-sm text-white/55">
-                          Type: {item.code_type} · Status: {item.activated ? 'Redeemed' : 'Pending'}
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+                      <div className="min-w-0">
+                        <div className="text-xl font-bold leading-tight text-white break-words">
+                          {item.label || item.code}
                         </div>
-                        <div className="mt-1 text-sm text-white/55">
-                          Scratch: {item.scratch_code}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="badge">{item.code_type}</span>
+                          <span className="badge">
+                            {item.activated ? 'Redeemed' : 'Pending'}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid gap-1 text-sm text-white/60">
+                          <div className="break-all">
+                            <strong>Code:</strong> {item.code}
+                          </div>
+                          <div className="break-all">
+                            <strong>Scratch:</strong> {item.scratch_code}
+                          </div>
+                          <div>
+                            <strong>Created:</strong> {formatDate(item.created_at)}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-3 xl:max-w-[340px] xl:justify-end">
                         <button
                           type="button"
                           className="btn btn-ghost"
@@ -833,16 +877,26 @@ export default function AdminQrCodesPanel({
                     </div>
 
                     {expanded ? (
-                      <div className="mt-4 grid gap-4 border-t border-[rgba(94,207,207,0.08)] pt-4 lg:grid-cols-2">
-                        <div className="grid gap-2 text-sm text-white/62">
-                          <div><strong>ID:</strong> {item.id}</div>
-                          <div><strong>Created:</strong> {formatDate(item.created_at)}</div>
-                          <div><strong>Activated At:</strong> {formatDate(item.activated_at)}</div>
-                          <div><strong>Is Active:</strong> {String(item.is_active)}</div>
-                          <div><strong>Public URL:</strong> {window.location.origin}/p/{item.code}</div>
+                      <div className="mt-4 grid gap-4 border-t border-[rgba(94,207,207,0.08)] pt-4 lg:grid-cols-2 min-w-0">
+                        <div className="grid gap-2 text-sm text-white/62 min-w-0">
+                          <div className="break-all">
+                            <strong>ID:</strong> {item.id}
+                          </div>
+                          <div>
+                            <strong>Created:</strong> {formatDate(item.created_at)}
+                          </div>
+                          <div>
+                            <strong>Activated At:</strong> {formatDate(item.activated_at)}
+                          </div>
+                          <div>
+                            <strong>Is Active:</strong> {String(item.is_active)}
+                          </div>
+                          <div className="break-all">
+                            <strong>Public URL:</strong> {window.location.origin}/p/{item.code}
+                          </div>
                         </div>
 
-                        <div className="grid gap-3">
+                        <div className="grid gap-3 min-w-0">
                           <div>
                             <label className="mb-2 block text-sm font-medium">Assigned Template</label>
                             <select
@@ -870,57 +924,30 @@ export default function AdminQrCodesPanel({
               </div>
             )}
           </div>
-
-          <div className="mt-6 flex items-center justify-between">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={safePage <= 1}
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            >
-              Previous
-            </button>
-
-            <div className="text-sm text-white/58">
-              Page {safePage} of {totalPages}
-            </div>
-
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            >
-              Next
-            </button>
-          </div>
         </div>
 
-        <div className="surface-card p-6">
-          <div className="eyebrow mb-4">QR preview</div>
-          <h2 className="display mb-4 text-2xl font-bold">
-            {selectedQr ? selectedQr.code : 'Select a QR code'}
-          </h2>
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={safePage <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          >
+            Previous
+          </button>
 
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
-            <div className="rounded-[20px] border border-[rgba(94,207,207,0.12)] bg-white p-4">
-              <canvas ref={canvasRef} width={240} height={240} />
-            </div>
-
-            <div className="text-sm text-white/62 leading-7">
-              {selectedQr ? (
-                <>
-                  <div><strong>Public URL:</strong> {window.location.origin}/p/{selectedQr.code}</div>
-                  <div><strong>Scratch Code:</strong> {selectedQr.scratch_code}</div>
-                  <div><strong>Type:</strong> {selectedQr.code_type}</div>
-                  <div><strong>Status:</strong> {selectedQr.activated ? 'Redeemed' : 'Pending'}</div>
-                  <div><strong>Created:</strong> {formatDate(selectedQr.created_at)}</div>
-                </>
-              ) : (
-                'Click Preview on any QR code to render it here.'
-              )}
-            </div>
+          <div className="text-center text-sm text-white/58">
+            Page {safePage} of {totalPages}
           </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

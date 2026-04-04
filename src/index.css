@@ -94,20 +94,8 @@ img {
 .site-root,
 .standalone-root,
 .route-shell,
-.route-shell-standalone {
-  min-height: 100vh;
-  position: relative;
-}
-
-.app-shell {
-  isolation: isolate;
-}
-
-.route-shell-fx {
-  min-height: inherit;
-  will-change: transform, opacity;
-}
-
+.route-shell-standalone,
+.route-shell-fx,
 .home-hightech,
 .portal-page,
 .about-page,
@@ -116,10 +104,56 @@ img {
 .how-page,
 .journal-page,
 .profile-page,
-.editor-page {
+.editor-page,
+.contact-page,
+.dashboard-page,
+.activate-page,
+.why-page {
+  min-height: 100vh;
   position: relative;
-  overflow: hidden;
+}
+
+.app-shell,
+.home-hightech,
+.portal-page,
+.about-page,
+.usecases-page,
+.solutions-page,
+.how-page,
+.journal-page,
+.profile-page,
+.editor-page,
+.contact-page,
+.dashboard-page,
+.activate-page,
+.why-page {
   isolation: isolate;
+  overflow: hidden;
+}
+
+.site-root {
+  background:
+    radial-gradient(circle at top left, rgba(94, 207, 207, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(94, 207, 207, 0.06), transparent 28%),
+    linear-gradient(180deg, #081919 0%, #0A1F1F 100%);
+}
+
+.route-shell,
+.route-shell-standalone,
+.route-shell-fx {
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.route-shell-fx {
+  min-height: inherit;
+  will-change: transform, opacity;
+}
+
+main,
+.route-shell,
+.route-shell-fx {
+  background: transparent !important;
 }
 
 .container {
@@ -159,10 +193,38 @@ img {
 
 /* Ambient global FX */
 
+.page-noise,
+.pulse-grid,
+.ambient-line,
+.glitter-field,
+.glitter-dot,
+.hero-ring,
+.hero-orb,
+.portal-bg-grid,
+.portal-bg-orb,
+.how-bg-orb,
+.solutions-bg-orb,
+.usecases-bg-orb,
+.about-bg-orb,
+.journal-bg-orb,
+.profile-bg-orb,
+.editor-bg-orb,
+.dashboard-bg-orb,
+.contact-bg-orb,
+.activate-bg-orb,
+.footer-orb,
+.navbar-top-glow,
+.contact-card-glow,
+.portal-card-glow,
+.editor-card-glow,
+.journal-card-glow,
+.profile-card-glow {
+  pointer-events: none !important;
+}
+
 .page-noise {
   position: fixed;
   inset: 0;
-  pointer-events: none;
   z-index: -2;
   opacity: 0.05;
   background-image:
@@ -175,9 +237,8 @@ img {
 .pulse-grid {
   position: fixed;
   inset: 0;
-  pointer-events: none;
   z-index: -3;
-  opacity: 0.14;
+  opacity: 0.12;
   background-image:
     linear-gradient(rgba(94, 207, 207, 0.08) 1px, transparent 1px),
     linear-gradient(90deg, rgba(94, 207, 207, 0.08) 1px, transparent 1px);
@@ -189,11 +250,10 @@ img {
 
 .ambient-line {
   position: fixed;
-  pointer-events: none;
   z-index: -1;
   border-radius: 999px;
   filter: blur(2px);
-  opacity: 0.34;
+  opacity: 0.3;
 }
 
 .ambient-line-1 {
@@ -217,7 +277,6 @@ img {
 .glitter-field {
   position: fixed;
   inset: 0;
-  pointer-events: none;
   z-index: -1;
   overflow: hidden;
 }
@@ -230,7 +289,7 @@ img {
   background: rgba(122, 231, 231, 0.95);
   box-shadow:
     0 0 8px rgba(94, 207, 207, 0.9),
-    0 0 16px rgba(94, 207, 207, 0.4);
+    0 0 16px rgba(94, 207, 207, 0.35);
   animation: glitterFloat linear infinite;
 }
 
@@ -238,7 +297,6 @@ img {
   position: fixed;
   border: 1px solid rgba(94, 207, 207, 0.12);
   border-radius: 999px;
-  pointer-events: none;
   z-index: -1;
 }
 
@@ -258,7 +316,7 @@ img {
   animation: slowSpinReverse 16s linear infinite;
 }
 
-/* Generic floating bg orbs for all upgraded pages */
+/* Generic floating bg orbs */
 
 .how-bg-orb,
 .solutions-bg-orb,
@@ -274,7 +332,6 @@ img {
   position: fixed;
   border-radius: 999px;
   filter: blur(48px);
-  pointer-events: none;
   z-index: -1;
 }
 
@@ -336,7 +393,6 @@ img {
   position: absolute;
   border-radius: 999px;
   filter: blur(40px);
-  pointer-events: none;
   animation: orbPulse 5s ease-in-out infinite;
 }
 
@@ -393,7 +449,7 @@ img {
   text-shadow:
     0 0 12px rgba(94, 207, 207, 0.28),
     0 0 32px rgba(94, 207, 207, 0.12),
-    0 0 72px rgba(94, 207, 207, 0.1);
+    0 0 72px rgba(94, 207, 207, 0.08);
 }
 
 .section-title {
@@ -456,7 +512,6 @@ img {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background:
     radial-gradient(
       260px circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
@@ -465,6 +520,7 @@ img {
     );
   opacity: 0;
   transition: opacity 0.28s ease;
+  pointer-events: none;
 }
 
 .surface-card::after,
@@ -472,7 +528,6 @@ img {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.05),
@@ -481,6 +536,7 @@ img {
     rgba(94, 207, 207, 0.05)
   );
   opacity: 0.9;
+  pointer-events: none;
 }
 
 .surface-card:hover::before,
@@ -546,6 +602,7 @@ img {
   );
   transform: translateX(-120%);
   transition: transform 0.8s ease;
+  pointer-events: none;
 }
 
 .hightech-panel:hover {
@@ -585,7 +642,6 @@ img {
   content: "";
   position: absolute;
   inset: -1px;
-  pointer-events: none;
   border-radius: inherit;
   background:
     linear-gradient(
@@ -597,6 +653,7 @@ img {
     );
   opacity: 0;
   transition: opacity 0.35s ease;
+  pointer-events: none;
 }
 
 .group:hover .media-frame::after,
@@ -670,6 +727,7 @@ img {
   );
   transform: skewX(-22deg);
   transition: left 0.65s ease;
+  pointer-events: none;
 }
 
 .btn::after {
@@ -677,9 +735,9 @@ img {
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.08);
   opacity: 0.7;
+  pointer-events: none;
 }
 
 .btn:hover::before {
@@ -792,9 +850,9 @@ img {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 45%);
   opacity: 0.7;
+  pointer-events: none;
 }
 
 .site-navbar-scrolled {
@@ -830,7 +888,6 @@ img {
   );
   opacity: 0.7;
   filter: blur(0.3px);
-  pointer-events: none;
 }
 
 .navbar-inner {
@@ -873,6 +930,7 @@ img {
   inset: -20%;
   background: radial-gradient(circle, rgba(94, 207, 207, 0.14), transparent 58%);
   animation: navbarMarkPulse 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .navbar-brand-letter {
@@ -891,6 +949,7 @@ img {
   background: rgba(94, 207, 207, 0.08);
   filter: blur(10px);
   animation: navbarBrandGlow 2.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .navbar-brand-title {
@@ -1112,10 +1171,9 @@ img {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 22%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 22%);
   opacity: 0.7;
+  pointer-events: none;
 }
 
 .footer-panel {
@@ -1136,10 +1194,10 @@ img {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background:
     radial-gradient(circle at top right, rgba(94, 207, 207, 0.08), transparent 26%),
     radial-gradient(circle at bottom left, rgba(94, 207, 207, 0.05), transparent 30%);
+  pointer-events: none;
 }
 
 .footer-brand {
@@ -1268,7 +1326,6 @@ img {
 .footer-orb {
   position: absolute;
   border-radius: 999px;
-  pointer-events: none;
   filter: blur(40px);
   opacity: 0.75;
 }
@@ -1291,12 +1348,11 @@ img {
   animation: footerFloatReverse 8.5s ease-in-out infinite;
 }
 
-/* Portal + shared auth/editor/dashboard helpers */
+/* Portal + shared helpers */
 
 .portal-bg-grid {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   opacity: 0.11;
   background-image:
     linear-gradient(rgba(94, 207, 207, 0.08) 1px, transparent 1px),
@@ -1404,16 +1460,15 @@ img {
 .usecases-cta-shell,
 .solutions-cta-shell,
 .editor-preview-style,
-.editor-section-shell,
-.portal-auth-card,
-.portal-info-card {
+.editor-section-shell {
   position: relative;
 }
 
 .portal-card-glow,
 .editor-card-glow,
 .journal-card-glow,
-.profile-card-glow {
+.profile-card-glow,
+.contact-card-glow {
   position: absolute;
   inset: auto auto 20px 20px;
   width: 200px;
@@ -1421,17 +1476,16 @@ img {
   border-radius: 999px;
   background: rgba(94, 207, 207, 0.08);
   filter: blur(50px);
-  pointer-events: none;
 }
 
 .portal-auth-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), transparent 20%),
     radial-gradient(circle at top right, rgba(94, 207, 207, 0.08), transparent 26%);
+  pointer-events: none;
 }
 
 .portal-auth-chip {
@@ -1503,20 +1557,23 @@ img {
 }
 
 .portal-message,
-.editor-feedback {
+.editor-feedback,
+.contact-feedback {
   border-radius: 18px;
   padding: 14px 16px;
   font-size: 0.92rem;
 }
 
 .portal-message-success,
-.editor-feedback-success {
+.editor-feedback-success,
+.contact-feedback-success {
   border: 1px solid rgba(16, 185, 129, 0.3);
   background: rgba(16, 185, 129, 0.1);
 }
 
 .portal-message-error,
-.editor-feedback-error {
+.editor-feedback-error,
+.contact-feedback-error {
   border: 1px solid rgba(239, 68, 68, 0.3);
   background: rgba(239, 68, 68, 0.1);
 }
@@ -1554,7 +1611,87 @@ img {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Fine-tuned page specific helper shells */
+/* Contact specific */
+
+.contact-form-shell,
+.contact-cta-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-form-shell::before,
+.contact-cta-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 20%),
+    radial-gradient(circle at top right, rgba(94, 207, 207, 0.08), transparent 28%);
+  pointer-events: none;
+}
+
+.contact-card-glow {
+  inset: auto auto 24px 24px;
+  width: 220px;
+  height: 220px;
+  filter: blur(56px);
+}
+
+.contact-inquiry-row {
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+
+.contact-inquiry-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(94, 207, 207, 0.18);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.contact-feedback {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-feedback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.05) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: portalShine 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.contact-signal-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(94, 207, 207, 0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  padding: 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.contact-signal-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(94, 207, 207, 0.24);
+  box-shadow: 0 0 24px rgba(94, 207, 207, 0.08);
+}
+
+/* Fine-tuned helper shells */
 
 .journal-article-card,
 .editor-navbar-link-shell,
@@ -1871,147 +2008,57 @@ img {
   }
 }
 
-/* =========================
-   GLOBAL PAGE FX (FIX)
-========================= */
+/* Dashboard click fix */
 
-/* Apply Home background system to ALL pages */
-.site-root {
+.dashboard-page {
   position: relative;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(94, 207, 207, 0.08), transparent 30%),
-    radial-gradient(circle at top right, rgba(94, 207, 207, 0.06), transparent 28%),
-    linear-gradient(180deg, #081919 0%, #0A1F1F 100%);
+  isolation: isolate;
 }
 
-/* Ensure FX layers are always visible */
-.page-noise,
-.pulse-grid,
-.ambient-line,
-.glitter-field {
-  pointer-events: none;
+.dashboard-page .page-noise,
+.dashboard-page .pulse-grid,
+.dashboard-page .ambient-line,
+.dashboard-page .glitter-field,
+.dashboard-page .hero-ring,
+.dashboard-page .dashboard-bg-orb {
+  pointer-events: none !important;
 }
 
-/* =========================
-   CONTACT PAGE FIX
-========================= */
-
-.contact-page {
+.dashboard-page .surface-card,
+.dashboard-page .glass-card,
+.dashboard-page aside,
+.dashboard-page button,
+.dashboard-page a,
+.dashboard-page input,
+.dashboard-page select,
+.dashboard-page textarea {
   position: relative;
-  overflow: hidden;
+  z-index: 2;
+  pointer-events: auto;
 }
 
-.contact-form-shell,
-.contact-cta-shell {
-  position: relative;
-  overflow: hidden;
+.site-navbar {
+  z-index: 80;
 }
 
-.contact-form-shell::before,
-.contact-cta-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 20%),
-    radial-gradient(circle at top right, rgba(94, 207, 207, 0.08), transparent 28%);
-}
-
-.contact-card-glow {
-  position: absolute;
-  inset: auto auto 24px 24px;
-  width: 220px;
-  height: 220px;
-  border-radius: 999px;
-  background: rgba(94, 207, 207, 0.08);
-  filter: blur(56px);
-  pointer-events: none;
-}
-
-.contact-inquiry-row {
-  transition:
-    transform 0.28s ease,
-    border-color 0.28s ease,
-    background 0.28s ease;
-}
-
-.contact-inquiry-row:hover {
-  transform: translateX(4px);
-  border-color: rgba(94, 207, 207, 0.18);
-  background: rgba(255, 255, 255, 0.015);
-}
-
-.contact-feedback {
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px;
-  padding: 14px 16px;
-  font-size: 0.92rem;
-}
-
-.contact-feedback::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(255,255,255,0.05) 50%,
-    transparent 100%
-  );
-  transform: translateX(-120%);
-  animation: portalShine 7s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.contact-feedback-success {
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.contact-feedback-error {
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.contact-signal-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 20px;
-  border: 1px solid rgba(94, 207, 207, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-  padding: 18px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  transition:
-    transform 0.28s ease,
-    border-color 0.28s ease,
-    box-shadow 0.28s ease;
-}
-
-.contact-signal-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(94, 207, 207, 0.24);
-  box-shadow: 0 0 24px rgba(94, 207, 207, 0.08);
-}
-
-/* =========================
-   IMPORTANT FIX (WHY YOUR DESIGN WAS BROKEN)
-========================= */
-
-/* Make sure ALL pages inherit proper stacking */
-.route-shell {
+.route-shell,
+.route-shell-standalone,
+.route-shell-fx {
   position: relative;
   z-index: 1;
+  pointer-events: auto;
 }
 
-/* Prevent pages from covering FX layers */
-main,
-.route-shell,
-.route-shell-fx {
-  background: transparent !important;
+button,
+[role="button"],
+a,
+.btn,
+.navbar-link,
+.navbar-mobile-link {
+  cursor: pointer;
 }
 
+button:disabled,
+.btn:disabled {
+  cursor: not-allowed;
+}

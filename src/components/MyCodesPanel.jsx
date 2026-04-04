@@ -200,8 +200,8 @@ export default function MyCodesPanel({ codes, user }) {
 
         return (
           <div key={code.id} className="surface-card p-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex items-start gap-5">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid gap-5 md:grid-cols-[96px_minmax(0,1fr)] md:items-start">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[20px] border border-[rgba(94,207,207,0.14)] bg-white p-2">
                   {qrImage ? (
                     <img
@@ -214,9 +214,9 @@ export default function MyCodesPanel({ codes, user }) {
                   )}
                 </div>
 
-                <div className="max-w-2xl">
+                <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-3">
-                    <h3 className="display text-2xl font-bold">
+                    <h3 className="display break-words text-2xl font-bold">
                       {code.label || 'Untitled code'}
                     </h3>
 
@@ -225,7 +225,7 @@ export default function MyCodesPanel({ codes, user }) {
                     {isOpen ? <span className="badge">Open</span> : null}
                   </div>
 
-                  <div className="mb-2 text-sm text-white/55">{code.code}</div>
+                  <div className="mb-2 break-all text-sm text-white/55">{code.code}</div>
                   <div className="mb-3 break-all text-sm text-white/65">{publicUrl}</div>
 
                   {isOpen ? (
@@ -233,7 +233,8 @@ export default function MyCodesPanel({ codes, user }) {
                       <div className="mb-1 font-semibold text-white">Open code</div>
                       <div className="leading-7 text-white/70">
                         This code becomes user-editable after activation. The owner can open
-                        the editor, personalize the profile, and update the public page over time.
+                        the editor, personalize the profile, and update the public page over
+                        time.
                       </div>
                     </div>
                   ) : null}
@@ -243,14 +244,15 @@ export default function MyCodesPanel({ codes, user }) {
                       <div className="mb-1 font-semibold text-white">Locked code</div>
                       <div className="leading-7 text-white/70">
                         This code opens official template-based content. After activation, the
-                        user can access the experience, but the page content stays controlled by admin templates.
+                        user can access the experience, but the page content stays controlled
+                        by admin templates.
                       </div>
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 lg:max-w-[320px] lg:justify-end">
+              <div className="flex flex-wrap gap-3 xl:flex-col xl:items-stretch">
                 <button
                   type="button"
                   className="btn btn-secondary"
