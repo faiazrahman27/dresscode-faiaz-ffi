@@ -420,7 +420,7 @@ export default function Solutions() {
                   <img
                     src={identityImage}
                     alt="QR identity engine"
-                    className="parallax-media h-[460px] w-full object-cover"
+                    className="parallax-media h-[460px] w-full object-contain"
                   />
                   <div className="absolute inset-0 hero-image-shine" />
                 </div>
@@ -465,7 +465,7 @@ export default function Solutions() {
                   <img
                     src={builderImage}
                     alt="Dresscode builder"
-                    className="parallax-media h-[460px] w-full object-cover"
+                    className="parallax-media h-[460px] w-full object-contain"
                   />
                   <div className="absolute inset-0 hero-image-shine" />
                 </div>
@@ -500,7 +500,7 @@ export default function Solutions() {
                 <img
                   src={officialImage}
                   alt="Official branded content"
-                  className="parallax-media h-[460px] w-full object-cover"
+                  className="parallax-media h-[460px] w-full object-contain"
                 />
                 <div className="absolute inset-0 hero-image-shine" />
               </div>
