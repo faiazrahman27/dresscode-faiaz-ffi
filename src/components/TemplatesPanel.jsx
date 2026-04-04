@@ -820,7 +820,7 @@ export default function TemplatesPanel({
 
           {!selectedTemplate ? (
             <p className="muted">
-              Pick a template from the left, or create a new one first.
+              Pick a template, or create a new one first.
             </p>
           ) : (
             <div className="grid gap-5">
@@ -1091,7 +1091,7 @@ export default function TemplatesPanel({
             <div className="eyebrow mb-4">Template editor</div>
             <h2 className="display mb-3 text-3xl font-bold">Select a template</h2>
             <p className="muted">
-              Pick a template from the left, or create a new one first.
+              Pick a template, or create a new one first.
             </p>
           </div>
         ) : null}
