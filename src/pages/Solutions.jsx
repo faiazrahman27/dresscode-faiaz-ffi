@@ -226,16 +226,14 @@ export default function Solutions() {
             whileInView="visible"
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.5 }}
-            className="grid gap-8 xl:grid-cols-[1fr_0.9fr]"
+            className="grid gap-8 xl:grid-cols-[1fr_0.9fr] xl:items-center"
           >
-            <div className="overflow-hidden rounded-[36px] border border-[rgba(94,207,207,0.10)] bg-[rgba(255,255,255,0.02)] p-6">
-              <div className="flex items-center justify-center rounded-[28px] bg-[#071515] p-4">
-                <img
-                  src={officialImage}
-                  alt="Official branded content"
-                  className="max-h-[500px] w-full object-contain"
-                />
-              </div>
+            <div className="overflow-hidden rounded-[34px]">
+              <img
+                src={officialImage}
+                alt="Official branded content"
+                className="h-[460px] w-full object-cover"
+              />
             </div>
 
             <div className="flex flex-col justify-center">
@@ -270,7 +268,7 @@ export default function Solutions() {
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.45 }}
               >
-                <div className="overflow-hidden rounded-[28px] mb-4">
+                <div className="mb-4 overflow-hidden rounded-[28px]">
                   <img
                     src={analyticsImage}
                     alt="Scan analytics"
@@ -294,7 +292,7 @@ export default function Solutions() {
                 viewport={{ once: true, amount: 0.2 }}
                 transition={{ duration: 0.45, delay: 0.05 }}
               >
-                <div className="overflow-hidden rounded-[28px] mb-4">
+                <div className="mb-4 overflow-hidden rounded-[28px]">
                   <img
                     src={securityImage}
                     alt="Security and ownership"
