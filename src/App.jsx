@@ -1,4 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect } from 'react'
+
 import Home from './pages/Home'
 import Portal from './pages/Portal'
 import Dashboard from './pages/Dashboard'
@@ -19,6 +22,56 @@ import PageEditor from './pages/PageEditor'
 
 const STANDALONE_PREFIXES = ['/portal', '/dashboard', '/activate/', '/p/', '/editor/']
 
+const pageTransition = {
+  initial: {
+    opacity: 0,
+    y: 24,
+    filter: 'blur(10px)',
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: 12,
+    filter: 'blur(8px)',
+    transition: {
+      duration: 0.32,
+      ease: [0.4, 0, 1, 1],
+    },
+  },
+}
+
+function ScrollToTopOnRouteChange() {
+  const location = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [location.pathname])
+
+  return null
+}
+
+function RouteShell({ children, standalone = false }) {
+  return (
+    <motion.main
+      className={standalone ? 'route-shell route-shell-standalone' : 'route-shell'}
+      variants={pageTransition}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
+      <div className="route-shell-fx">{children}</div>
+    </motion.main>
+  )
+}
+
 export default function App() {
   const location = useLocation()
 
@@ -27,41 +80,133 @@ export default function App() {
   )
 
   return (
-    <>
+    <div className={isStandalone ? 'site-root standalone-root' : 'site-root'}>
+      <ScrollToTopOnRouteChange />
+
       {!isStandalone && <Navbar />}
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/how-it-works" element={<HowItWorks />} />
-        <Route path="/use-cases" element={<UseCases />} />
-        <Route path="/solutions" element={<Solutions />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/why-it-matters" element={<WhyItMatters />} />
-        <Route path="/journal" element={<Journal />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/portal" element={<Portal />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/editor/:code"
-          element={
-            <ProtectedRoute>
-              <PageEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/activate/:code" element={<Activate />} />
-        <Route path="/p/:code" element={<Profile />} />
-        <Route path="/p/:code/html" element={<HtmlViewer />} />
-      </Routes>
+      <AnimatePresence mode="wait" initial={false}>
+        <Routes location={location} key={location.pathname}>
+          <Route
+            path="/"
+            element={
+              <RouteShell>
+                <Home />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/how-it-works"
+            element={
+              <RouteShell>
+                <HowItWorks />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/use-cases"
+            element={
+              <RouteShell>
+                <UseCases />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/solutions"
+            element={
+              <RouteShell>
+                <Solutions />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <RouteShell>
+                <About />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/why-it-matters"
+            element={
+              <RouteShell>
+                <WhyItMatters />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/journal"
+            element={
+              <RouteShell>
+                <Journal />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <RouteShell>
+                <Contact />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/portal"
+            element={
+              <RouteShell standalone>
+                <Portal />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <RouteShell standalone>
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/editor/:code"
+            element={
+              <RouteShell standalone>
+                <ProtectedRoute>
+                  <PageEditor />
+                </ProtectedRoute>
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/activate/:code"
+            element={
+              <RouteShell standalone>
+                <Activate />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/p/:code"
+            element={
+              <RouteShell standalone>
+                <Profile />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/p/:code/html"
+            element={
+              <RouteShell standalone>
+                <HtmlViewer />
+              </RouteShell>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
 
       {!isStandalone && <Footer />}
-    </>
+    </div>
   )
 }

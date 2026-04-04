@@ -1,47 +1,86 @@
 import { Link } from 'react-router-dom'
 
+const platformLinks = [
+  { to: '/how-it-works', label: 'How it Works' },
+  { to: '/use-cases', label: 'Use Cases' },
+  { to: '/solutions', label: 'Solutions' },
+  { to: '/journal', label: 'Journal' },
+]
+
+const companyLinks = [
+  { to: '/about', label: 'About' },
+  { to: '/contact', label: 'Contact' },
+  { to: '/portal', label: 'Portal' },
+]
+
 export default function Footer() {
   return (
-    <footer className="border-t border-[rgba(94,207,207,0.08)] bg-[rgba(9,23,23,0.6)]">
+    <footer className="site-footer">
+      <div className="footer-orb footer-orb-1" />
+      <div className="footer-orb footer-orb-2" />
+
       <div className="container py-14">
-        <div className="grid-3">
-          <div>
-            <div className="display mb-3 text-2xl font-bold">Dresscode</div>
-            <p className="max-w-md text-sm leading-7 text-white/62">
-              A wearable media infrastructure platform where every garment, object,
-              or collectible can unlock a dynamic digital experience.
-            </p>
+        <div className="footer-panel">
+          <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
+            <div>
+              <Link to="/" className="footer-brand">
+                <div className="footer-brand-mark">
+                  <span className="display footer-brand-letter">D</span>
+                </div>
+
+                <div>
+                  <div className="display mb-1 text-2xl font-bold">Dresscode</div>
+                  <div className="footer-brand-subtitle">wearable media infrastructure</div>
+                </div>
+              </Link>
+
+              <p className="footer-copy mt-5 max-w-md text-sm leading-7 text-white/62">
+                A wearable media infrastructure platform where every garment, object,
+                or collectible can unlock a dynamic digital experience.
+              </p>
+
+              <div className="footer-chip-row mt-6">
+                <span className="footer-chip">Profiles</span>
+                <span className="footer-chip">Activation</span>
+                <span className="footer-chip">Live Content</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="footer-heading">
+                Platform
+              </div>
+
+              <div className="footer-links">
+                {platformLinks.map((item) => (
+                  <Link key={item.to} to={item.to} className="footer-link">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="footer-heading">
+                Company
+              </div>
+
+              <div className="footer-links">
+                {companyLinks.map((item) => (
+                  <Link key={item.to} to={item.to} className="footer-link">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div>
-            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-white/55">
-              Platform
-            </div>
-            <div className="flex flex-col gap-3 text-sm text-white/72">
-              <Link to="/how-it-works">How it Works</Link>
-              <Link to="/use-cases">Use Cases</Link>
-              <Link to="/solutions">Solutions</Link>
-              <Link to="/journal">Journal</Link>
-            </div>
+          <div className="divider my-10" />
+
+          <div className="footer-bottom">
+            <span>© Dresscode 2026. All rights reserved.</span>
+            <span>Wearable media · profiles · activation · live content</span>
           </div>
-
-          <div>
-            <div className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-white/55">
-              Company
-            </div>
-            <div className="flex flex-col gap-3 text-sm text-white/72">
-              <Link to="/about">About</Link>
-              <Link to="/contact">Contact</Link>
-              <Link to="/portal">Portal</Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="divider my-10" />
-
-        <div className="flex flex-col gap-3 text-sm text-white/48 md:flex-row md:items-center md:justify-between">
-          <span>© Dresscode 2025. All rights reserved.</span>
-          <span>Wearable media · profiles · activation · live content</span>
         </div>
       </div>
     </footer>

@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useAuth } from '../context/AuthContext'
 import {
   createBlockByType,
@@ -11,6 +13,27 @@ import {
 } from '../lib/pageBuilder'
 import { getPublicProfileUrl } from '../lib/site'
 import { uploadImageToAvatars } from '../lib/storage'
+
+gsap.registerPlugin(ScrollTrigger)
+
+function GlitterField({ count = 16 }) {
+  return (
+    <div className="glitter-field" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <span
+          key={i}
+          className="glitter-dot"
+          style={{
+            left: `${(i * 9 + 7) % 100}%`,
+            top: `${(i * 11 + 13) % 100}%`,
+            animationDelay: `${(i % 9) * 0.55}s`,
+            animationDuration: `${4.2 + (i % 5)}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 function createNavbarLink() {
   return {
@@ -45,6 +68,7 @@ export default function PageEditor() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const rootRef = useRef(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -58,6 +82,215 @@ export default function PageEditor() {
 
   const previewUrl = useMemo(() => `/p/${code}`, [code])
   const publicUrl = useMemo(() => getPublicProfileUrl(code), [code])
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion) return undefined
+
+    const cleanupFns = []
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.editor-hero-copy > *',
+        { opacity: 0, y: 34 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.85,
+          stagger: 0.08,
+          ease: 'power3.out',
+        }
+      )
+
+      gsap.fromTo(
+        '.editor-sidebar-wrap',
+        { opacity: 0, x: -24 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 0.82,
+          ease: 'power3.out',
+          delay: 0.08,
+        }
+      )
+
+      gsap.fromTo(
+        '.editor-main-wrap',
+        { opacity: 0, y: 28, scale: 0.985 },
+        {
+          opacity: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.92,
+          ease: 'power3.out',
+          delay: 0.12,
+        }
+      )
+
+      gsap.utils.toArray('.reveal-up').forEach((el, i) => {
+        gsap.fromTo(
+          el,
+          { opacity: 0, y: 38 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.78,
+            delay: i * 0.02,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 86%',
+            },
+          }
+        )
+      })
+
+      gsap.utils.toArray('.reveal-scale').forEach((el) => {
+        gsap.fromTo(
+          el,
+          { opacity: 0, scale: 0.95 },
+          {
+            opacity: 1,
+            scale: 1,
+            duration: 0.75,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: el,
+              start: 'top 88%',
+            },
+          }
+        )
+      })
+
+      gsap.to('.pulse-grid', {
+        backgroundPosition: '220% 220%',
+        duration: 22,
+        repeat: -1,
+        ease: 'none',
+      })
+
+      gsap.to('.editor-bg-orb-1', {
+        y: 22,
+        x: 12,
+        duration: 6.6,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      gsap.to('.editor-bg-orb-2', {
+        y: -18,
+        x: -12,
+        duration: 7.4,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      gsap.to('.editor-bg-orb-3', {
+        y: 14,
+        x: 10,
+        duration: 8.1,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+
+      gsap.utils.toArray('.float-card').forEach((el, i) => {
+        gsap.to(el, {
+          y: i % 2 === 0 ? -8 : 8,
+          duration: 3.6 + i * 0.25,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        })
+      })
+
+      gsap.utils.toArray('.tilt-card').forEach((card) => {
+        const inner = card.querySelector('.tilt-inner')
+        if (!inner) return
+
+        const handleMove = (e) => {
+          const rect = card.getBoundingClientRect()
+          const x = e.clientX - rect.left
+          const y = e.clientY - rect.top
+          const rotateY = ((x / rect.width) - 0.5) * 8
+          const rotateX = -((y / rect.height) - 0.5) * 8
+
+          gsap.to(inner, {
+            rotateX,
+            rotateY,
+            transformPerspective: 900,
+            transformOrigin: 'center',
+            duration: 0.3,
+            ease: 'power2.out',
+          })
+
+          gsap.to(card, {
+            '--spotlight-x': `${x}px`,
+            '--spotlight-y': `${y}px`,
+            duration: 0.22,
+            ease: 'power2.out',
+          })
+        }
+
+        const handleLeave = () => {
+          gsap.to(inner, {
+            rotateX: 0,
+            rotateY: 0,
+            duration: 0.45,
+            ease: 'power3.out',
+          })
+        }
+
+        card.addEventListener('mousemove', handleMove)
+        card.addEventListener('mouseleave', handleLeave)
+
+        cleanupFns.push(() => {
+          card.removeEventListener('mousemove', handleMove)
+          card.removeEventListener('mouseleave', handleLeave)
+        })
+      })
+
+      gsap.utils.toArray('.magnetic-btn').forEach((btn) => {
+        const handleMove = (e) => {
+          const rect = btn.getBoundingClientRect()
+          const x = e.clientX - rect.left - rect.width / 2
+          const y = e.clientY - rect.top - rect.height / 2
+
+          gsap.to(btn, {
+            x: x * 0.11,
+            y: y * 0.11,
+            duration: 0.28,
+            ease: 'power3.out',
+          })
+        }
+
+        const handleLeave = () => {
+          gsap.to(btn, {
+            x: 0,
+            y: 0,
+            duration: 0.45,
+            ease: 'elastic.out(1, 0.45)',
+          })
+        }
+
+        btn.addEventListener('mousemove', handleMove)
+        btn.addEventListener('mouseleave', handleLeave)
+
+        cleanupFns.push(() => {
+          btn.removeEventListener('mousemove', handleMove)
+          btn.removeEventListener('mouseleave', handleLeave)
+        })
+      })
+    }, rootRef)
+
+    return () => {
+      cleanupFns.forEach((fn) => fn())
+      ctx.revert()
+      ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -481,32 +714,28 @@ export default function PageEditor() {
     const firstAvatarBlock = allBlocks.find((block) => block.type === 'avatar') || null
 
     const cleanedAvatarName =
-  firstAvatarBlock?.name && firstAvatarBlock.name !== 'Your Name'
-    ? firstAvatarBlock.name
-    : ''
+      firstAvatarBlock?.name && firstAvatarBlock.name !== 'Your Name'
+        ? firstAvatarBlock.name
+        : ''
 
-const cleanedAvatarBio =
-  firstAvatarBlock?.bio && firstAvatarBlock.bio !== 'Short bio goes here.'
-    ? firstAvatarBlock.bio
-    : ''
+    const cleanedAvatarBio =
+      firstAvatarBlock?.bio && firstAvatarBlock.bio !== 'Short bio goes here.'
+        ? firstAvatarBlock.bio
+        : ''
 
-const cleanedProfileName =
-  codeProfile.full_name && codeProfile.full_name !== 'Your Name'
-    ? codeProfile.full_name
-    : ''
+    const cleanedProfileName =
+      codeProfile.full_name && codeProfile.full_name !== 'Your Name'
+        ? codeProfile.full_name
+        : ''
 
-const cleanedProfileBio =
-  codeProfile.bio && codeProfile.bio !== 'Short bio goes here.'
-    ? codeProfile.bio
-    : ''
+    const cleanedProfileBio =
+      codeProfile.bio && codeProfile.bio !== 'Short bio goes here.'
+        ? codeProfile.bio
+        : ''
 
-const derivedFullName = cleanedAvatarName || cleanedProfileName || ''
-const derivedBio = cleanedAvatarBio || cleanedProfileBio || ''
-const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url || ''
-
-
-
-
+    const derivedFullName = cleanedAvatarName || cleanedProfileName || ''
+    const derivedBio = cleanedAvatarBio || cleanedProfileBio || ''
+    const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url || ''
 
     const { data, error } = await saveCodeProfilePageData(codeProfile.id, cleanedPageData, {
       full_name: derivedFullName,
@@ -600,7 +829,7 @@ const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url ||
 
           <button
             type="button"
-            className="btn btn-ghost"
+            className="btn btn-ghost magnetic-btn"
             onClick={() => addSocialItem(sectionId, columnId, block.id)}
           >
             Add Social Item
@@ -610,7 +839,7 @@ const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url ||
             {(block.items || []).map((item) => (
               <div
                 key={item.id}
-                className="rounded-[14px] border border-[rgba(94,207,207,0.10)] bg-[rgba(255,255,255,0.02)] p-3"
+                className="editor-social-item-shell rounded-[14px] border border-[rgba(94,207,207,0.10)] bg-[rgba(255,255,255,0.02)] p-3"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <div className="text-sm font-semibold text-[#5ECFCF]">Social Item</div>
@@ -841,23 +1070,52 @@ const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url ||
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A1F1F] text-white flex items-center justify-center">
-        Loading editor...
+      <div
+        ref={rootRef}
+        className="editor-page min-h-screen bg-[#0A1F1F] text-white flex items-center justify-center"
+      >
+        <div className="page-noise" />
+        <div className="pulse-grid" />
+        <div className="editor-bg-orb editor-bg-orb-1" />
+        <div className="editor-bg-orb editor-bg-orb-2" />
+        <div className="editor-bg-orb editor-bg-orb-3" />
+        <GlitterField count={14} />
+
+        <div className="surface-card p-8 tilt-card reveal-scale">
+          <div className="tilt-inner">
+            <div className="eyebrow mb-4">Editor</div>
+            <h1 className="section-title mb-2">Loading editor...</h1>
+            <p className="muted">Preparing your page builder workspace.</p>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error && !codeProfile) {
     return (
-      <div className="min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+      <div ref={rootRef} className="editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+        <div className="page-noise" />
+        <div className="pulse-grid" />
+        <div className="ambient-line ambient-line-1" />
+        <div className="ambient-line ambient-line-2" />
+        <div className="editor-bg-orb editor-bg-orb-1" />
+        <div className="editor-bg-orb editor-bg-orb-2" />
+        <div className="editor-bg-orb editor-bg-orb-3" />
+        <div className="hero-ring hero-ring-1" />
+        <div className="hero-ring hero-ring-2" />
+        <GlitterField count={16} />
+
         <div className="container max-w-3xl">
-          <div className="surface-card p-8 text-center">
-            <div className="eyebrow mb-4">Editor</div>
-            <h1 className="section-title mb-4">Could not open editor</h1>
-            <p className="muted mb-6">{error}</p>
-            <Link to="/dashboard" className="btn btn-primary">
-              Back to Dashboard
-            </Link>
+          <div className="surface-card p-8 text-center tilt-card reveal-scale">
+            <div className="tilt-inner">
+              <div className="eyebrow mb-4">Editor</div>
+              <h1 className="section-title mb-4">Could not open editor</h1>
+              <p className="muted mb-6">{error}</p>
+              <Link to="/dashboard" className="btn btn-primary glow-btn magnetic-btn">
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -866,31 +1124,44 @@ const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url ||
 
   if (qrCode?.code_type === 'locked') {
     return (
-      <div className="min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+      <div ref={rootRef} className="editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+        <div className="page-noise" />
+        <div className="pulse-grid" />
+        <div className="ambient-line ambient-line-1" />
+        <div className="ambient-line ambient-line-2" />
+        <div className="editor-bg-orb editor-bg-orb-1" />
+        <div className="editor-bg-orb editor-bg-orb-2" />
+        <div className="editor-bg-orb editor-bg-orb-3" />
+        <div className="hero-ring hero-ring-1" />
+        <div className="hero-ring hero-ring-2" />
+        <GlitterField count={16} />
+
         <div className="container max-w-3xl">
-          <div className="surface-card p-8 text-center">
-            <div className="eyebrow mb-4">Locked code</div>
-            <h1 className="section-title mb-4">This page cannot be edited here</h1>
-            <p className="muted mb-6">
-              Locked codes use official template-based content. Users can access the live
-              experience, but only admin-managed templates control what appears publicly.
-            </p>
+          <div className="surface-card p-8 text-center tilt-card reveal-scale">
+            <div className="tilt-inner">
+              <div className="eyebrow mb-4">Locked code</div>
+              <h1 className="section-title mb-4">This page cannot be edited here</h1>
+              <p className="muted mb-6">
+                Locked codes use official template-based content. Users can access the live
+                experience, but only admin-managed templates control what appears publicly.
+              </p>
 
-            <div className="mb-6 flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => navigate(previewUrl)}
-                className="btn btn-primary"
-              >
-                Preview Live Page
-              </button>
-              <Link to="/dashboard" className="btn btn-secondary">
-                Back to Dashboard
-              </Link>
-            </div>
+              <div className="mb-6 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(previewUrl)}
+                  className="btn btn-primary glow-btn magnetic-btn"
+                >
+                  Preview Live Page
+                </button>
+                <Link to="/dashboard" className="btn btn-secondary magnetic-btn">
+                  Back to Dashboard
+                </Link>
+              </div>
 
-            <div className="rounded-[18px] border border-[rgba(94,207,207,0.14)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/75">
-              Public URL: <span className="break-all">{publicUrl}</span>
+              <div className="rounded-[18px] border border-[rgba(94,207,207,0.14)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/75">
+                Public URL: <span className="break-all">{publicUrl}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -908,433 +1179,471 @@ const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url ||
       : bg.value || '#0A1F1F'
 
   return (
-    <div className="min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
-      <div className="container">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <div className="eyebrow mb-3">Page builder</div>
-            <h1 className="section-title mb-2">
-              Edit {qrCode?.label || qrCode?.code || 'Profile'}
-            </h1>
-            <p className="muted">
-              This is an open code. You can customize the public page for this activated item.
-            </p>
-          </div>
+    <div ref={rootRef} className="editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+      <div className="page-noise" />
+      <div className="pulse-grid" />
+      <div className="ambient-line ambient-line-1" />
+      <div className="ambient-line ambient-line-2" />
+      <div className="editor-bg-orb editor-bg-orb-1" />
+      <div className="editor-bg-orb editor-bg-orb-2" />
+      <div className="editor-bg-orb editor-bg-orb-3" />
+      <div className="hero-ring hero-ring-1" />
+      <div className="hero-ring hero-ring-2" />
+      <GlitterField count={18} />
 
-          <div className="flex flex-wrap gap-3">
-            <Link to="/dashboard" className="btn btn-secondary">
-              Back
-            </Link>
-            <button type="button" onClick={() => navigate(previewUrl)} className="btn btn-ghost">
-              Preview
-            </button>
-            <button type="button" onClick={handleSave} className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Page'}
-            </button>
+      <div className="container">
+        <div className="editor-hero-card surface-card tilt-card p-6 md:p-8 mb-6">
+          <div className="tilt-inner editor-hero-copy">
+            <div className="editor-card-glow" />
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="eyebrow mb-3">Page builder</div>
+                <h1 className="section-title mb-2">
+                  Edit {qrCode?.label || qrCode?.code || 'Profile'}
+                </h1>
+                <p className="muted">
+                  This is an open code. You can customize the public page for this activated item.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link to="/dashboard" className="btn btn-secondary magnetic-btn">
+                  Back
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => navigate(previewUrl)}
+                  className="btn btn-ghost magnetic-btn"
+                >
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="btn btn-primary glow-btn magnetic-btn"
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Page'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {feedback ? (
-          <div className="mb-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm">
+          <div className="editor-feedback editor-feedback-success mb-5 reveal-up">
             {feedback}
           </div>
         ) : null}
 
         {error && codeProfile ? (
-          <div className="mb-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
+          <div className="editor-feedback editor-feedback-error mb-5 reveal-up">
             {error}
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-white/80">
+        <div className="editor-open-code-banner mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-white/80 reveal-up">
           Open code: this public page is editable by the owner after activation.
         </div>
 
-        <div className="mb-6 rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/70">
+        <div className="editor-public-url-banner mb-6 rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/70 reveal-up">
           Public URL: <span className="break-all">{publicUrl}</span>
         </div>
 
-        <div className="mb-6 rounded-[24px] border border-[rgba(94,207,207,0.12)] p-6" style={{ background: previewBackground }}>
-          <div className="mb-2 text-sm uppercase tracking-[0.14em] text-[#5ECFCF]">Live style preview</div>
-          <div className="text-3xl font-bold" style={{ color: accentColor }}>
-            {qrCode?.label || 'Your profile style'}
-          </div>
-          <div className="mt-2 text-white/70">
-            This preview shows your current accent and background settings.
+        <div
+          className="editor-preview-style mb-6 rounded-[24px] border border-[rgba(94,207,207,0.12)] p-6 tilt-card reveal-scale"
+          style={{ background: previewBackground }}
+        >
+          <div className="tilt-inner">
+            <div className="mb-2 text-sm uppercase tracking-[0.14em] text-[#5ECFCF]">Live style preview</div>
+            <div className="text-3xl font-bold" style={{ color: accentColor }}>
+              {qrCode?.label || 'Your profile style'}
+            </div>
+            <div className="mt-2 text-white/70">
+              This preview shows your current accent and background settings.
+            </div>
           </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="grid gap-6">
-            <div className="surface-card h-fit p-6">
-              <div className="mb-6">
-                <div className="eyebrow mb-3">Page settings</div>
-                <h2 className="display text-2xl font-bold">Global settings</h2>
-              </div>
-
-              <div className="grid gap-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Accent Color</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={normalizeHexColor(accentColor, '#5ECFCF')}
-                      onChange={(e) => updateAccentColor(e.target.value)}
-                      className="h-12 w-16 rounded border-0 bg-transparent p-0"
-                    />
-                    <input
-                      type="text"
-                      className="field"
-                      value={accentColor}
-                      onChange={(e) => updateAccentColor(e.target.value)}
-                      placeholder="#5ECFCF"
-                    />
-                  </div>
+          <div className="editor-sidebar-wrap grid gap-6">
+            <div className="surface-card h-fit p-6 tilt-card reveal-scale">
+              <div className="tilt-inner">
+                <div className="mb-6">
+                  <div className="eyebrow mb-3">Page settings</div>
+                  <h2 className="display text-2xl font-bold">Global settings</h2>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Background Type</label>
-                  <select
-                    className="field"
-                    value={bgType}
-                    onChange={(e) => updateBackgroundField('type', e.target.value)}
-                  >
-                    <option value="color">Solid Color</option>
-                    <option value="gradient">Gradient</option>
-                  </select>
-                </div>
-
-                {bgType === 'color' ? (
+                <div className="grid gap-5">
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Background Color</label>
+                    <label className="mb-2 block text-sm font-medium">Accent Color</label>
                     <div className="flex items-center gap-3">
                       <input
                         type="color"
-                        value={normalizeHexColor(bg.value, '#0A1F1F')}
-                        onChange={(e) => updateBackgroundField('value', e.target.value)}
+                        value={normalizeHexColor(accentColor, '#5ECFCF')}
+                        onChange={(e) => updateAccentColor(e.target.value)}
                         className="h-12 w-16 rounded border-0 bg-transparent p-0"
                       />
                       <input
                         type="text"
                         className="field"
-                        value={bg.value || '#0A1F1F'}
-                        onChange={(e) => updateBackgroundField('value', e.target.value)}
-                        placeholder="#0A1F1F"
+                        value={accentColor}
+                        onChange={(e) => updateAccentColor(e.target.value)}
+                        placeholder="#5ECFCF"
                       />
                     </div>
                   </div>
-                ) : (
-                  <div className="grid gap-4">
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Background Type</label>
+                    <select
+                      className="field"
+                      value={bgType}
+                      onChange={(e) => updateBackgroundField('type', e.target.value)}
+                    >
+                      <option value="color">Solid Color</option>
+                      <option value="gradient">Gradient</option>
+                    </select>
+                  </div>
+
+                  {bgType === 'color' ? (
                     <div>
-                      <label className="mb-2 block text-sm font-medium">Gradient From</label>
+                      <label className="mb-2 block text-sm font-medium">Background Color</label>
                       <div className="flex items-center gap-3">
                         <input
                           type="color"
-                          value={normalizeHexColor(bg.gradientFrom, '#0A1F1F')}
-                          onChange={(e) => updateBackgroundField('gradientFrom', e.target.value)}
+                          value={normalizeHexColor(bg.value, '#0A1F1F')}
+                          onChange={(e) => updateBackgroundField('value', e.target.value)}
                           className="h-12 w-16 rounded border-0 bg-transparent p-0"
                         />
                         <input
                           type="text"
                           className="field"
-                          value={bg.gradientFrom || '#0A1F1F'}
-                          onChange={(e) => updateBackgroundField('gradientFrom', e.target.value)}
+                          value={bg.value || '#0A1F1F'}
+                          onChange={(e) => updateBackgroundField('value', e.target.value)}
                           placeholder="#0A1F1F"
                         />
                       </div>
                     </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Gradient From</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={normalizeHexColor(bg.gradientFrom, '#0A1F1F')}
+                            onChange={(e) => updateBackgroundField('gradientFrom', e.target.value)}
+                            className="h-12 w-16 rounded border-0 bg-transparent p-0"
+                          />
+                          <input
+                            type="text"
+                            className="field"
+                            value={bg.gradientFrom || '#0A1F1F'}
+                            onChange={(e) => updateBackgroundField('gradientFrom', e.target.value)}
+                            placeholder="#0A1F1F"
+                          />
+                        </div>
+                      </div>
 
-                    <div>
-                      <label className="mb-2 block text-sm font-medium">Gradient To</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={normalizeHexColor(bg.gradientTo, '#123B3B')}
-                          onChange={(e) => updateBackgroundField('gradientTo', e.target.value)}
-                          className="h-12 w-16 rounded border-0 bg-transparent p-0"
-                        />
-                        <input
-                          type="text"
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Gradient To</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={normalizeHexColor(bg.gradientTo, '#123B3B')}
+                            onChange={(e) => updateBackgroundField('gradientTo', e.target.value)}
+                            className="h-12 w-16 rounded border-0 bg-transparent p-0"
+                          />
+                          <input
+                            type="text"
+                            className="field"
+                            value={bg.gradientTo || '#123B3B'}
+                            onChange={(e) => updateBackgroundField('gradientTo', e.target.value)}
+                            placeholder="#123B3B"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Gradient Direction</label>
+                        <select
                           className="field"
-                          value={bg.gradientTo || '#123B3B'}
-                          onChange={(e) => updateBackgroundField('gradientTo', e.target.value)}
-                          placeholder="#123B3B"
-                        />
+                          value={bg.gradientDirection || '135deg'}
+                          onChange={(e) =>
+                            updateBackgroundField('gradientDirection', e.target.value)
+                          }
+                        >
+                          <option value="90deg">Left to Right</option>
+                          <option value="180deg">Top to Bottom</option>
+                          <option value="135deg">Diagonal</option>
+                          <option value="45deg">Reverse Diagonal</option>
+                        </select>
                       </div>
                     </div>
+                  )}
 
-                    <div>
-                      <label className="mb-2 block text-sm font-medium">Gradient Direction</label>
-                      <select
-                        className="field"
-                        value={bg.gradientDirection || '135deg'}
-                        onChange={(e) =>
-                          updateBackgroundField('gradientDirection', e.target.value)
-                        }
-                      >
-                        <option value="90deg">Left to Right</option>
-                        <option value="180deg">Top to Bottom</option>
-                        <option value="135deg">Diagonal</option>
-                        <option value="45deg">Reverse Diagonal</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Redirect URL</label>
+                    <input
+                      type="text"
+                      className="field"
+                      value={pageData.settings?.redirectUrl || ''}
+                      onChange={(e) => updateSettings('redirectUrl', e.target.value)}
+                      placeholder="https://example.com"
+                    />
                   </div>
-                )}
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Redirect URL</label>
-                  <input
-                    type="text"
-                    className="field"
-                    value={pageData.settings?.redirectUrl || ''}
-                    onChange={(e) => updateSettings('redirectUrl', e.target.value)}
-                    placeholder="https://example.com"
-                  />
+                  <button type="button" onClick={addSection} className="btn btn-primary glow-btn magnetic-btn w-full">
+                    Add Section
+                  </button>
                 </div>
-
-                <button type="button" onClick={addSection} className="btn btn-primary w-full">
-                  Add Section
-                </button>
               </div>
             </div>
 
-            <div className="surface-card h-fit p-6">
-              <div className="mb-6">
-                <div className="eyebrow mb-3">Navigation bar</div>
-                <h2 className="display text-2xl font-bold">Sticky navbar</h2>
-              </div>
-
-              <div className="grid gap-4">
-                <label className="flex items-center gap-3 text-sm text-white/80">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(pageData.navbar?.enabled)}
-                    onChange={(e) => updateNavbar('enabled', e.target.checked)}
-                  />
-                  <span>Enable navbar</span>
-                </label>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Brand Text</label>
-                  <input
-                    type="text"
-                    className="field"
-                    value={pageData.navbar?.brandText || ''}
-                    onChange={(e) => updateNavbar('brandText', e.target.value)}
-                    placeholder="Dresscode"
-                  />
+            <div className="surface-card h-fit p-6 tilt-card reveal-scale">
+              <div className="tilt-inner">
+                <div className="mb-6">
+                  <div className="eyebrow mb-3">Navigation bar</div>
+                  <h2 className="display text-2xl font-bold">Sticky navbar</h2>
                 </div>
 
-                <button type="button" onClick={addNavbarLink} className="btn btn-ghost w-full">
-                  Add Navbar Link
-                </button>
+                <div className="grid gap-4">
+                  <label className="flex items-center gap-3 text-sm text-white/80">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(pageData.navbar?.enabled)}
+                      onChange={(e) => updateNavbar('enabled', e.target.checked)}
+                    />
+                    <span>Enable navbar</span>
+                  </label>
 
-                <div className="grid gap-3">
-                  {(pageData.navbar?.links || []).length === 0 ? (
-                    <div className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/50">
-                      No navbar links yet.
-                    </div>
-                  ) : null}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Brand Text</label>
+                    <input
+                      type="text"
+                      className="field"
+                      value={pageData.navbar?.brandText || ''}
+                      onChange={(e) => updateNavbar('brandText', e.target.value)}
+                      placeholder="Dresscode"
+                    />
+                  </div>
 
-                  {(pageData.navbar?.links || []).map((link) => (
-                    <div
-                      key={link.id}
-                      className="rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
-                          Link
+                  <button type="button" onClick={addNavbarLink} className="btn btn-ghost magnetic-btn w-full">
+                    Add Navbar Link
+                  </button>
+
+                  <div className="grid gap-3">
+                    {(pageData.navbar?.links || []).length === 0 ? (
+                      <div className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/50">
+                        No navbar links yet.
+                      </div>
+                    ) : null}
+
+                    {(pageData.navbar?.links || []).map((link) => (
+                      <div
+                        key={link.id}
+                        className="editor-navbar-link-shell rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
+                            Link
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeNavbarLink(link.id)}
+                            className="text-sm text-white/55 hover:text-white"
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeNavbarLink(link.id)}
-                          className="text-sm text-white/55 hover:text-white"
-                        >
-                          Remove
-                        </button>
-                      </div>
 
-                      <div className="grid gap-3">
-                        <input
-                          type="text"
-                          className="field"
-                          value={link.label || ''}
-                          onChange={(e) => updateNavbarLink(link.id, 'label', e.target.value)}
-                          placeholder="Link label"
-                        />
-
-                        <select
-                          className="field"
-                          value={link.type || 'anchor'}
-                          onChange={(e) => updateNavbarLink(link.id, 'type', e.target.value)}
-                        >
-                          <option value="anchor">Section Anchor</option>
-                          <option value="external">External URL</option>
-                        </select>
-
-                        {link.type === 'external' ? (
+                        <div className="grid gap-3">
                           <input
                             type="text"
                             className="field"
-                            value={link.url || ''}
-                            onChange={(e) => updateNavbarLink(link.id, 'url', e.target.value)}
-                            placeholder="https://example.com or www.example.com"
+                            value={link.label || ''}
+                            onChange={(e) => updateNavbarLink(link.id, 'label', e.target.value)}
+                            placeholder="Link label"
                           />
-                        ) : (
-                          <input
-                            type="text"
+
+                          <select
                             className="field"
-                            value={link.anchorId || ''}
-                            onChange={(e) => updateNavbarLink(link.id, 'anchorId', e.target.value)}
-                            placeholder="Anchor ID, e.g. links"
-                          />
-                        )}
+                            value={link.type || 'anchor'}
+                            onChange={(e) => updateNavbarLink(link.id, 'type', e.target.value)}
+                          >
+                            <option value="anchor">Section Anchor</option>
+                            <option value="external">External URL</option>
+                          </select>
+
+                          {link.type === 'external' ? (
+                            <input
+                              type="text"
+                              className="field"
+                              value={link.url || ''}
+                              onChange={(e) => updateNavbarLink(link.id, 'url', e.target.value)}
+                              placeholder="https://example.com or www.example.com"
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              className="field"
+                              value={link.anchorId || ''}
+                              onChange={(e) => updateNavbarLink(link.id, 'anchorId', e.target.value)}
+                              placeholder="Anchor ID, e.g. links"
+                            />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-5">
+          <div className="editor-main-wrap grid gap-5">
             {pageData.sections.length === 0 ? (
-              <div className="surface-card p-8">
-                <div className="eyebrow mb-4">Sections</div>
-                <h2 className="display mb-3 text-3xl font-bold">No sections yet</h2>
-                <p className="muted mb-6">
-                  Add your first section to start building this page.
-                </p>
-                <button type="button" onClick={addSection} className="btn btn-primary">
-                  Add First Section
-                </button>
+              <div className="surface-card p-8 tilt-card reveal-scale">
+                <div className="tilt-inner">
+                  <div className="eyebrow mb-4">Sections</div>
+                  <h2 className="display mb-3 text-3xl font-bold">No sections yet</h2>
+                  <p className="muted mb-6">
+                    Add your first section to start building this page.
+                  </p>
+                  <button type="button" onClick={addSection} className="btn btn-primary glow-btn magnetic-btn">
+                    Add First Section
+                  </button>
+                </div>
               </div>
             ) : null}
 
             {pageData.sections.map((section, index) => (
-              <div key={section.id} className="surface-card p-6">
-                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="eyebrow mb-3">Section {index + 1}</div>
-                    <h3 className="display text-2xl font-bold">{section.name}</h3>
-                  </div>
+              <div key={section.id} className="editor-section-shell surface-card p-6 tilt-card reveal-up">
+                <div className="tilt-inner">
+                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="eyebrow mb-3">Section {index + 1}</div>
+                      <h3 className="display text-2xl font-bold">{section.name}</h3>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => removeSection(section.id)}
-                    className="btn btn-secondary"
-                  >
-                    Remove Section
-                  </button>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Section Name</label>
-                    <input
-                      type="text"
-                      className="field"
-                      value={section.name}
-                      onChange={(e) => updateSection(section.id, 'name', e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Anchor ID</label>
-                    <input
-                      type="text"
-                      className="field"
-                      value={section.anchorId}
-                      onChange={(e) => updateSection(section.id, 'anchorId', e.target.value)}
-                      placeholder="links"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Columns</label>
-                    <select
-                      className="field"
-                      value={section.columns?.length || 1}
-                      onChange={(e) => updateSectionColumns(section.id, Number(e.target.value))}
+                    <button
+                      type="button"
+                      onClick={() => removeSection(section.id)}
+                      className="btn btn-secondary magnetic-btn"
                     >
-                      <option value={1}>1 Column</option>
-                      <option value={2}>2 Columns</option>
-                      <option value={3}>3 Columns</option>
-                      <option value={4}>4 Columns</option>
-                    </select>
+                      Remove Section
+                    </button>
                   </div>
-                </div>
 
-                <div className={`mt-6 grid gap-4 ${getColumnGridClass(section.columns?.length || 1)}`}>
-                  {(section.columns || []).map((column, columnIndex) => (
-                    <div
-                      key={column.id}
-                      className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
-                    >
-                      <div className="mb-4">
-                        <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
-                          Column {columnIndex + 1}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Section Name</label>
+                      <input
+                        type="text"
+                        className="field"
+                        value={section.name}
+                        onChange={(e) => updateSection(section.id, 'name', e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Anchor ID</label>
+                      <input
+                        type="text"
+                        className="field"
+                        value={section.anchorId}
+                        onChange={(e) => updateSection(section.id, 'anchorId', e.target.value)}
+                        placeholder="links"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Columns</label>
+                      <select
+                        className="field"
+                        value={section.columns?.length || 1}
+                        onChange={(e) => updateSectionColumns(section.id, Number(e.target.value))}
+                      >
+                        <option value={1}>1 Column</option>
+                        <option value={2}>2 Columns</option>
+                        <option value={3}>3 Columns</option>
+                        <option value={4}>4 Columns</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={`mt-6 grid gap-4 ${getColumnGridClass(section.columns?.length || 1)}`}>
+                    {(section.columns || []).map((column, columnIndex) => (
+                      <div
+                        key={column.id}
+                        className="editor-column-shell rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 float-card"
+                      >
+                        <div className="mb-4">
+                          <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
+                            Column {columnIndex + 1}
+                          </div>
+                        </div>
+
+                        <div className="mb-4 flex flex-wrap gap-2">
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'avatar')}>
+                            Avatar
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'text')}>
+                            Text
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'link')}>
+                            Link
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'socials')}>
+                            Socials
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'image')}>
+                            Image
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'badge')}>
+                            Badge
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'divider')}>
+                            Divider
+                          </button>
+                          <button type="button" className="btn btn-ghost magnetic-btn" onClick={() => addBlock(section.id, column.id, 'spacer')}>
+                            Spacer
+                          </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {(column.blocks || []).length === 0 ? (
+                            <div className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/50">
+                              No blocks in this column yet.
+                            </div>
+                          ) : null}
+
+                          {(column.blocks || []).map((block) => (
+                            <div
+                              key={block.id}
+                              className="editor-block-shell rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
+                            >
+                              <div className="mb-4 flex items-center justify-between">
+                                <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
+                                  {block.type}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeBlock(section.id, column.id, block.id)}
+                                  className="text-sm text-white/55 hover:text-white"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+
+                              {renderBlockEditor(section.id, column.id, block)}
+                            </div>
+                          ))}
                         </div>
                       </div>
-
-                      <div className="mb-4 flex flex-wrap gap-2">
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'avatar')}>
-                          Avatar
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'text')}>
-                          Text
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'link')}>
-                          Link
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'socials')}>
-                          Socials
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'image')}>
-                          Image
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'badge')}>
-                          Badge
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'divider')}>
-                          Divider
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'spacer')}>
-                          Spacer
-                        </button>
-                      </div>
-
-                      <div className="grid gap-4">
-                        {(column.blocks || []).length === 0 ? (
-                          <div className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/50">
-                            No blocks in this column yet.
-                          </div>
-                        ) : null}
-
-                        {(column.blocks || []).map((block) => (
-                          <div
-                            key={block.id}
-                            className="rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
-                          >
-                            <div className="mb-4 flex items-center justify-between">
-                              <div className="text-sm font-semibold uppercase tracking-[0.14em] text-[#5ECFCF]">
-                                {block.type}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeBlock(section.id, column.id, block.id)}
-                                className="text-sm text-white/55 hover:text-white"
-                              >
-                                Remove
-                              </button>
-                            </div>
-
-                            {renderBlockEditor(section.id, column.id, block)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
