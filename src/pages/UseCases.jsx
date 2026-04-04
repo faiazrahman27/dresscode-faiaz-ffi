@@ -319,7 +319,7 @@ export default function UseCases() {
   }, [])
 
   return (
-    <div ref={rootRef} className="usecases-page min-h-screen bg-[#0A1F1F] text-white">
+    <div ref={rootRef} className="app-shell usecases-page min-h-screen bg-[#0A1F1F] text-white">
       <div className="page-noise" />
       <div className="pulse-grid" />
       <div className="ambient-line ambient-line-1" />

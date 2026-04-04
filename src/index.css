@@ -119,6 +119,7 @@ img {
 .editor-page {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .container {
@@ -1869,3 +1870,148 @@ img {
     justify-content: center;
   }
 }
+
+/* =========================
+   GLOBAL PAGE FX (FIX)
+========================= */
+
+/* Apply Home background system to ALL pages */
+.site-root {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(94, 207, 207, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(94, 207, 207, 0.06), transparent 28%),
+    linear-gradient(180deg, #081919 0%, #0A1F1F 100%);
+}
+
+/* Ensure FX layers are always visible */
+.page-noise,
+.pulse-grid,
+.ambient-line,
+.glitter-field {
+  pointer-events: none;
+}
+
+/* =========================
+   CONTACT PAGE FIX
+========================= */
+
+.contact-page {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-form-shell,
+.contact-cta-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-form-shell::before,
+.contact-cta-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), transparent 20%),
+    radial-gradient(circle at top right, rgba(94, 207, 207, 0.08), transparent 28%);
+}
+
+.contact-card-glow {
+  position: absolute;
+  inset: auto auto 24px 24px;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: rgba(94, 207, 207, 0.08);
+  filter: blur(56px);
+  pointer-events: none;
+}
+
+.contact-inquiry-row {
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+
+.contact-inquiry-row:hover {
+  transform: translateX(4px);
+  border-color: rgba(94, 207, 207, 0.18);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.contact-feedback {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 14px 16px;
+  font-size: 0.92rem;
+}
+
+.contact-feedback::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255,255,255,0.05) 50%,
+    transparent 100%
+  );
+  transform: translateX(-120%);
+  animation: portalShine 7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.contact-feedback-success {
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.contact-feedback-error {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.contact-signal-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(94, 207, 207, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  padding: 18px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition:
+    transform 0.28s ease,
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.contact-signal-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(94, 207, 207, 0.24);
+  box-shadow: 0 0 24px rgba(94, 207, 207, 0.08);
+}
+
+/* =========================
+   IMPORTANT FIX (WHY YOUR DESIGN WAS BROKEN)
+========================= */
+
+/* Make sure ALL pages inherit proper stacking */
+.route-shell {
+  position: relative;
+  z-index: 1;
+}
+
+/* Prevent pages from covering FX layers */
+main,
+.route-shell,
+.route-shell-fx {
+  background: transparent !important;
+}
+

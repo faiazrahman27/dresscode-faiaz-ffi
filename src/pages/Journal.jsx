@@ -218,7 +218,7 @@ export default function Journal() {
   }, [])
 
   return (
-    <div ref={rootRef} className="journal-page min-h-screen bg-[#0A1F1F] text-white px-4 py-12">
+    <div ref={rootRef} className="app-shell journal-page min-h-screen bg-[#0A1F1F] text-white px-4 py-12">
       <div className="page-noise" />
       <div className="pulse-grid" />
       <div className="ambient-line ambient-line-1" />

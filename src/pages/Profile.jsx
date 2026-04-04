@@ -573,7 +573,7 @@ export default function Profile() {
     return (
       <div
         ref={rootRef}
-        className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] text-white"
+        className="app-shell profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] text-white"
       >
         <div className="page-noise" />
         <div className="pulse-grid" />

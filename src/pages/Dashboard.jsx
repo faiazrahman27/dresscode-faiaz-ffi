@@ -698,7 +698,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div ref={rootRef} className="dashboard-page min-h-screen bg-[#0A1F1F] text-white">
+    <div ref={rootRef} className="app-shell dashboard-page min-h-screen bg-[#0A1F1F] text-white">
       <Navbar />
 
       <div className="page-noise" />

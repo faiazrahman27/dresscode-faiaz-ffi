@@ -281,7 +281,7 @@ export default function Solutions() {
   }, [])
 
   return (
-    <div ref={rootRef} className="solutions-page min-h-screen bg-[#0A1F1F] text-white">
+    <div ref={rootRef} className="app-shell solutions-page min-h-screen bg-[#0A1F1F] text-white">
       <div className="page-noise" />
       <div className="pulse-grid" />
       <div className="ambient-line ambient-line-1" />

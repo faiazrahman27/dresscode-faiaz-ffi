@@ -1179,7 +1179,7 @@ export default function PageEditor() {
       : bg.value || '#0A1F1F'
 
   return (
-    <div ref={rootRef} className="editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
+    <div ref={rootRef} className="app-shell editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
       <div className="page-noise" />
       <div className="pulse-grid" />
       <div className="ambient-line ambient-line-1" />

@@ -343,7 +343,7 @@ export default function Activate() {
     return (
       <div
         ref={rootRef}
-        className="activate-page min-h-screen bg-[#0A1F1F] text-white flex items-center justify-center"
+        className="app-shell activate-page min-h-screen bg-[#0A1F1F] text-white flex items-center justify-center"
       >
         <div className="page-noise" />
         <div className="pulse-grid" />
