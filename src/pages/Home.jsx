@@ -1,10 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { useEffect, useRef } from 'react'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import Lenis from '@studio-freight/lenis'
 
 import heroMain from '../assets/home/hero-main.jpg'
 import heroCard1 from '../assets/home/hero-card-1.jpg'
@@ -22,11 +18,19 @@ import usecaseFashionTag from '../assets/home/usecase-fashion-tag.jpg'
 import usecaseMerchDrop from '../assets/home/usecase-merch-drop.jpg'
 import ctaWearableBanner from '../assets/home/cta-wearable-banner.jpg'
 
-gsap.registerPlugin(ScrollTrigger)
-
 const fadeUp = {
-  hidden: { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
+}
+
+const heroStagger = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.05,
+    },
+  },
 }
 
 const features = [
@@ -145,245 +149,28 @@ function GlitterField({ count = 18 }) {
   )
 }
 
+function SectionIntro({ eyebrow, title, text, tight = false }) {
+  return (
+    <motion.div
+      className={`max-w-3xl ${tight ? 'mb-10' : 'mb-12'}`}
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.45 }}
+    >
+      <div className="eyebrow mb-4">{eyebrow}</div>
+      <h2 className="section-title mb-4">{title}</h2>
+      <p className="lead">{text}</p>
+    </motion.div>
+  )
+}
+
 export default function Home() {
   const { user, loading } = useAuth()
-  const rootRef = useRef(null)
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReducedMotion) return undefined
-
-    const lenis = new Lenis({
-      duration: 1.1,
-      smoothWheel: true,
-      smoothTouch: false,
-      wheelMultiplier: 0.9,
-    })
-
-    let rafId = 0
-    const raf = (time) => {
-      lenis.raf(time)
-      rafId = requestAnimationFrame(raf)
-    }
-    rafId = requestAnimationFrame(raf)
-
-    const onLenisScroll = () => ScrollTrigger.update()
-    lenis.on('scroll', onLenisScroll)
-
-    gsap.ticker.lagSmoothing(0)
-
-    const cleanupFns = []
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.hero-copy > *',
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          stagger: 0.11,
-          ease: 'power3.out',
-          clearProps: 'all',
-        }
-      )
-
-      gsap.fromTo(
-        '.hero-visual',
-        { opacity: 0, y: 48, scale: 0.965, rotateX: 7 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          rotateX: 0,
-          duration: 1.05,
-          ease: 'power3.out',
-          delay: 0.12,
-          clearProps: 'all',
-        }
-      )
-
-      gsap.utils.toArray('.reveal-up').forEach((el, i) => {
-        gsap.fromTo(
-          el,
-          { opacity: 0, y: 46 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.85,
-            delay: i * 0.02,
-            ease: 'power3.out',
-            clearProps: 'all',
-            scrollTrigger: {
-              trigger: el,
-              start: 'top 84%',
-            },
-          }
-        )
-      })
-
-      gsap.utils.toArray('.reveal-scale').forEach((el) => {
-        gsap.fromTo(
-          el,
-          { opacity: 0, scale: 0.94, y: 18 },
-          {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            duration: 0.85,
-            ease: 'power3.out',
-            clearProps: 'all',
-            scrollTrigger: {
-              trigger: el,
-              start: 'top 86%',
-            },
-          }
-        )
-      })
-
-      gsap.utils.toArray('.parallax-media').forEach((el) => {
-        gsap.fromTo(
-          el,
-          { y: -18 },
-          {
-            y: 18,
-            ease: 'none',
-            scrollTrigger: {
-              trigger: el,
-              start: 'top bottom',
-              end: 'bottom top',
-              scrub: true,
-            },
-          }
-        )
-      })
-
-      gsap.to('.hero-orb.orb-1', {
-        y: 28,
-        x: -20,
-        duration: 5.5,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-      })
-
-      gsap.to('.hero-orb.orb-2', {
-        y: -24,
-        x: 16,
-        duration: 4.9,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-      })
-
-      gsap.to('.pulse-grid', {
-        backgroundPosition: '220% 220%',
-        duration: 22,
-        repeat: -1,
-        ease: 'none',
-      })
-
-      gsap.utils.toArray('.float-card').forEach((el, i) => {
-        gsap.to(el, {
-          y: i % 2 === 0 ? -10 : 10,
-          duration: 3.8 + i * 0.25,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-        })
-      })
-
-      gsap.utils.toArray('.tilt-card').forEach((card) => {
-        const inner = card.querySelector('.tilt-inner')
-        if (!inner) return
-
-        const handleMove = (e) => {
-          const rect = card.getBoundingClientRect()
-          const x = e.clientX - rect.left
-          const y = e.clientY - rect.top
-          const rotateY = ((x / rect.width) - 0.5) * 9
-          const rotateX = -((y / rect.height) - 0.5) * 9
-
-          gsap.to(inner, {
-            rotateX,
-            rotateY,
-            transformPerspective: 900,
-            transformOrigin: 'center',
-            duration: 0.3,
-            ease: 'power2.out',
-          })
-
-          gsap.to(card, {
-            '--spotlight-x': `${x}px`,
-            '--spotlight-y': `${y}px`,
-            duration: 0.22,
-            ease: 'power2.out',
-          })
-        }
-
-        const handleLeave = () => {
-          gsap.to(inner, {
-            rotateX: 0,
-            rotateY: 0,
-            duration: 0.45,
-            ease: 'power3.out',
-          })
-        }
-
-        card.addEventListener('mousemove', handleMove)
-        card.addEventListener('mouseleave', handleLeave)
-
-        cleanupFns.push(() => {
-          card.removeEventListener('mousemove', handleMove)
-          card.removeEventListener('mouseleave', handleLeave)
-        })
-      })
-
-      gsap.utils.toArray('.magnetic-btn').forEach((btn) => {
-        const handleMove = (e) => {
-          const rect = btn.getBoundingClientRect()
-          const x = e.clientX - rect.left - rect.width / 2
-          const y = e.clientY - rect.top - rect.height / 2
-
-          gsap.to(btn, {
-            x: x * 0.12,
-            y: y * 0.12,
-            duration: 0.28,
-            ease: 'power3.out',
-          })
-        }
-
-        const handleLeave = () => {
-          gsap.to(btn, {
-            x: 0,
-            y: 0,
-            duration: 0.45,
-            ease: 'elastic.out(1, 0.45)',
-          })
-        }
-
-        btn.addEventListener('mousemove', handleMove)
-        btn.addEventListener('mouseleave', handleLeave)
-
-        cleanupFns.push(() => {
-          btn.removeEventListener('mousemove', handleMove)
-          btn.removeEventListener('mouseleave', handleLeave)
-        })
-      })
-    }, rootRef)
-
-    return () => {
-      cleanupFns.forEach((fn) => fn())
-      cancelAnimationFrame(rafId)
-      lenis.off('scroll', onLenisScroll)
-      lenis.destroy()
-      ctx.revert()
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
-    }
-  }, [])
 
   return (
-    <div ref={rootRef} className="app-shell home-hightech">
+    <div className="app-shell home-hightech">
       <div className="page-noise" />
       <div className="pulse-grid" />
       <div className="ambient-line ambient-line-1" />
@@ -400,31 +187,44 @@ export default function Home() {
           <div className="grid gap-8 xl:grid-cols-[1.02fr_0.98fr] xl:items-center">
             <motion.div
               className="hero-copy"
-              variants={fadeUp}
+              variants={heroStagger}
               initial="hidden"
               animate="visible"
-              transition={{ duration: 0.6 }}
             >
-              <div className="eyebrow mb-6">Wearable media infrastructure</div>
+              <motion.div variants={fadeUp} transition={{ duration: 0.45 }}>
+                <div className="eyebrow mb-6">Wearable media infrastructure</div>
+              </motion.div>
 
-              <h1 className="hero-title mb-6">
+              <motion.h1
+                className="hero-title mb-6"
+                variants={fadeUp}
+                transition={{ duration: 0.5 }}
+              >
                 Turn every garment into a
                 <span className="text-[#5ECFCF] hero-accent"> living digital identity</span>
-              </h1>
+              </motion.h1>
 
-              <p className="lead mb-8 max-w-2xl">
+              <motion.p
+                className="lead mb-8 max-w-2xl"
+                variants={fadeUp}
+                transition={{ duration: 0.5 }}
+              >
                 Dresscode connects physical products to dynamic profile pages, secure
                 activation, analytics, and branded digital experiences. It is built for
                 wearable media — where the story starts on the item itself.
-              </p>
+              </motion.p>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <motion.div
+                className="flex flex-col gap-3 sm:flex-row"
+                variants={fadeUp}
+                transition={{ duration: 0.45 }}
+              >
                 {!loading && !user ? (
                   <>
-                    <Link to="/portal" className="btn btn-primary magnetic-btn glow-btn">
+                    <Link to="/portal" className="btn btn-primary glow-btn">
                       Get Started
                     </Link>
-                    <Link to="/how-it-works" className="btn btn-secondary magnetic-btn">
+                    <Link to="/how-it-works" className="btn btn-secondary">
                       Explore Platform
                     </Link>
                   </>
@@ -432,36 +232,34 @@ export default function Home() {
 
                 {!loading && user ? (
                   <>
-                    <Link to="/dashboard" className="btn btn-primary magnetic-btn glow-btn">
+                    <Link to="/dashboard" className="btn btn-primary glow-btn">
                       Open Dashboard
                     </Link>
-                    <Link to="/how-it-works" className="btn btn-secondary magnetic-btn">
+                    <Link to="/how-it-works" className="btn btn-secondary">
                       Platform Overview
                     </Link>
                   </>
                 ) : null}
-              </div>
+              </motion.div>
 
-              <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="glass-card p-5 tilt-card reveal-scale float-card">
-                  <div className="tilt-inner">
-                    <div className="metric-value">QR + Scratch</div>
-                    <div className="metric-label">Secure activation model</div>
-                  </div>
+              <motion.div
+                className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3"
+                variants={fadeUp}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="glass-card p-5">
+                  <div className="metric-value">QR + Scratch</div>
+                  <div className="metric-label">Secure activation model</div>
                 </div>
-                <div className="glass-card p-5 tilt-card reveal-scale float-card">
-                  <div className="tilt-inner">
-                    <div className="metric-value">Live Pages</div>
-                    <div className="metric-label">Dynamic public experiences</div>
-                  </div>
+                <div className="glass-card p-5">
+                  <div className="metric-value">Live Pages</div>
+                  <div className="metric-label">Dynamic public experiences</div>
                 </div>
-                <div className="glass-card p-5 tilt-card reveal-scale float-card">
-                  <div className="tilt-inner">
-                    <div className="metric-value">Admin Control</div>
-                    <div className="metric-label">Roles, templates, analytics</div>
-                  </div>
+                <div className="glass-card p-5">
+                  <div className="metric-value">Admin Control</div>
+                  <div className="metric-label">Roles, templates, analytics</div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -469,67 +267,61 @@ export default function Home() {
               variants={fadeUp}
               initial="hidden"
               animate="visible"
-              transition={{ duration: 0.7, delay: 0.12 }}
+              transition={{ duration: 0.55, delay: 0.12 }}
             >
               <div className="grid gap-4">
-                <div className="surface-card overflow-hidden p-3 md:p-4 tilt-card">
-                  <div className="tilt-inner">
-                    <div className="group relative overflow-hidden rounded-[24px] media-frame">
-                      <img
-                        src={heroMain}
-                        alt="Dresscode wearable identity hero"
-                        className="parallax-media h-[420px] w-full object-cover transition duration-700 group-hover:scale-[1.06]"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/90 via-[#071515]/20 to-transparent" />
-                      <div className="absolute inset-0 hero-image-shine" />
-                      <div className="absolute bottom-0 left-0 right-0 p-6">
-                        <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
-                          Live identity layer
-                        </div>
-                        <div className="text-2xl font-bold">
-                          Physical product, digital presence
-                        </div>
+                <div className="surface-card overflow-hidden p-3 md:p-4">
+                  <div className="group relative overflow-hidden rounded-[24px] media-frame">
+                    <img
+                      src={heroMain}
+                      alt="Dresscode wearable identity hero"
+                      className="h-[420px] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/90 via-[#071515]/20 to-transparent" />
+                    <div className="absolute inset-0 hero-image-shine" />
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                      <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
+                        Live identity layer
+                      </div>
+                      <div className="text-2xl font-bold">
+                        Physical product, digital presence
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="glass-card overflow-hidden p-3 tilt-card">
-                    <div className="tilt-inner">
-                      <div className="group relative overflow-hidden rounded-[22px] media-frame">
-                        <img
-                          src={heroGarmentTag}
-                          alt="Garment tag with QR identity"
-                          className="parallax-media h-[220px] w-full object-cover transition duration-700 group-hover:scale-[1.08]"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/80 via-transparent to-transparent" />
-                        <div className="absolute inset-0 hero-image-shine" />
-                        <div className="absolute bottom-0 left-0 right-0 p-4">
-                          <div className="font-semibold">Start from the garment</div>
-                          <div className="text-sm text-white/70">
-                            The wearable item becomes the first screen
-                          </div>
+                  <div className="glass-card overflow-hidden p-3">
+                    <div className="group relative overflow-hidden rounded-[22px] media-frame">
+                      <img
+                        src={heroGarmentTag}
+                        alt="Garment tag with QR identity"
+                        className="h-[220px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/80 via-transparent to-transparent" />
+                      <div className="absolute inset-0 hero-image-shine" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <div className="font-semibold">Start from the garment</div>
+                        <div className="text-sm text-white/70">
+                          The wearable item becomes the first screen
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="glass-card overflow-hidden p-3 tilt-card">
-                    <div className="tilt-inner">
-                      <div className="group relative overflow-hidden rounded-[22px] media-frame">
-                        <img
-                          src={heroCard2}
-                          alt="Phone showing public profile"
-                          className="parallax-media h-[220px] w-full object-cover transition duration-700 group-hover:scale-[1.08]"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/80 via-transparent to-transparent" />
-                        <div className="absolute inset-0 hero-image-shine" />
-                        <div className="absolute bottom-0 left-0 right-0 p-4">
-                          <div className="font-semibold">Open the live page</div>
-                          <div className="text-sm text-white/70">
-                            Media, identity, links, and official content
-                          </div>
+                  <div className="glass-card overflow-hidden p-3">
+                    <div className="group relative overflow-hidden rounded-[22px] media-frame">
+                      <img
+                        src={heroCard2}
+                        alt="Phone showing public profile"
+                        className="h-[220px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/80 via-transparent to-transparent" />
+                      <div className="absolute inset-0 hero-image-shine" />
+                      <div className="absolute bottom-0 left-0 right-0 p-4">
+                        <div className="font-semibold">Open the live page</div>
+                        <div className="text-sm text-white/70">
+                          Media, identity, links, and official content
                         </div>
                       </div>
                     </div>
@@ -543,42 +335,35 @@ export default function Home() {
 
       <section className="section-tight">
         <div className="container">
-          <div className="mb-10 max-w-3xl reveal-up">
-            <div className="eyebrow mb-4">Story first</div>
-            <h2 className="section-title mb-4">
-              The product is no longer the end of the journey — it is the beginning
-            </h2>
-            <p className="lead">
-              A shirt, a jersey, a badge, a drop, a collectible piece. What used to stop
-              at the physical object can now continue into identity, ownership, updates,
-              and branded storytelling.
-            </p>
-          </div>
+          <SectionIntro
+            tight
+            eyebrow="Story first"
+            title="The product is no longer the end of the journey — it is the beginning"
+            text="A shirt, a jersey, a badge, a drop, a collectible piece. What used to stop at the physical object can now continue into identity, ownership, updates, and branded storytelling."
+          />
 
           <div className="grid gap-6 lg:grid-cols-3">
             {storyMoments.map((item, index) => (
               <motion.div
                 key={item.title}
-                className="surface-card overflow-hidden p-3 tilt-card reveal-up"
+                className="surface-card overflow-hidden p-3"
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.42, delay: index * 0.06 }}
               >
-                <div className="tilt-inner">
-                  <div className="group overflow-hidden rounded-[24px] media-frame">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="parallax-media h-[250px] w-full object-cover transition duration-700 group-hover:scale-[1.07]"
-                    />
-                  </div>
+                <div className="group overflow-hidden rounded-[24px] media-frame">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-[250px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                  />
+                </div>
 
-                  <div className="p-4">
-                    <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
-                    <p className="text-sm leading-7 text-white/65">{item.text}</p>
-                  </div>
+                <div className="p-4">
+                  <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
+                  <p className="text-sm leading-7 text-white/65">{item.text}</p>
                 </div>
               </motion.div>
             ))}
@@ -588,35 +373,29 @@ export default function Home() {
 
       <section className="section-tight">
         <div className="container">
-          <div className="mb-10 max-w-3xl reveal-up">
-            <div className="eyebrow mb-4">Core platform</div>
-            <h2 className="section-title mb-4">
-              Built for identity, ownership, and live branded experiences
-            </h2>
-            <p className="lead">
-              Dresscode is not only a QR generator. It is a system for activation,
-              official content, personalization, and scan-driven engagement.
-            </p>
-          </div>
+          <SectionIntro
+            tight
+            eyebrow="Core platform"
+            title="Built for identity, ownership, and live branded experiences"
+            text="Dresscode is not only a QR generator. It is a system for activation, official content, personalization, and scan-driven engagement."
+          />
 
           <div className="grid-3">
             {features.map((item, index) => (
               <motion.div
                 key={item.title}
-                className="surface-card group p-6 tilt-card reveal-up"
+                className="surface-card group p-6"
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.42, delay: index * 0.06 }}
               >
-                <div className="tilt-inner">
-                  <div className="feature-icon mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[#5ECFCF]">
-                    0{index + 1}
-                  </div>
-                  <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
-                  <p className="text-sm leading-7 text-white/65">{item.text}</p>
+                <div className="feature-icon mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl text-[#5ECFCF]">
+                  0{index + 1}
                 </div>
+                <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
+                <p className="text-sm leading-7 text-white/65">{item.text}</p>
               </motion.div>
             ))}
           </div>
@@ -629,16 +408,14 @@ export default function Home() {
             {platformSignals.map((item, index) => (
               <motion.div
                 key={item}
-                className="surface-card p-5 tilt-card reveal-up"
+                className="surface-card p-5"
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.38, delay: index * 0.04 }}
               >
-                <div className="tilt-inner">
-                  <div className="text-base leading-7 text-white/72">{item}</div>
-                </div>
+                <div className="text-base leading-7 text-white/72">{item}</div>
               </motion.div>
             ))}
           </div>
@@ -647,41 +424,39 @@ export default function Home() {
 
       <section className="section">
         <div className="container">
-          <div className="mb-12 max-w-3xl reveal-up">
-            <div className="eyebrow mb-5">How it works</div>
-            <h2 className="section-title mb-4">
-              A simple flow with real control behind it
-            </h2>
-            <p className="lead">
-              From scan to activation to editing, Dresscode makes a physical item behave
-              like a live digital identity.
-            </p>
-          </div>
+          <SectionIntro
+            eyebrow="How it works"
+            title="A simple flow with real control behind it"
+            text="From scan to activation to editing, Dresscode makes a physical item behave like a live digital identity."
+          />
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {steps.map((step) => (
-              <div
+            {steps.map((step, index) => (
+              <motion.div
                 key={step.no}
-                className="surface-card group overflow-hidden p-3 tilt-card reveal-up"
+                className="surface-card group overflow-hidden p-3"
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.42, delay: index * 0.05 }}
               >
-                <div className="tilt-inner">
-                  <div className="overflow-hidden rounded-[20px] media-frame">
-                    <img
-                      src={step.image}
-                      alt={step.title}
-                      className="parallax-media h-[190px] w-full object-cover transition duration-700 group-hover:scale-[1.07]"
-                    />
-                  </div>
-
-                  <div className="p-3">
-                    <div className="display mb-4 text-4xl font-bold text-[#5ECFCF] step-number">
-                      {step.no}
-                    </div>
-                    <h3 className="mb-3 text-xl font-semibold">{step.title}</h3>
-                    <p className="text-sm leading-7 text-white/62">{step.text}</p>
-                  </div>
+                <div className="overflow-hidden rounded-[20px] media-frame">
+                  <img
+                    src={step.image}
+                    alt={step.title}
+                    className="h-[190px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                  />
                 </div>
-              </div>
+
+                <div className="p-3">
+                  <div className="display mb-4 text-4xl font-bold text-[#5ECFCF] step-number">
+                    {step.no}
+                  </div>
+                  <h3 className="mb-3 text-xl font-semibold">{step.title}</h3>
+                  <p className="text-sm leading-7 text-white/62">{step.text}</p>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -689,40 +464,35 @@ export default function Home() {
 
       <section className="section-tight">
         <div className="container">
-          <div className="mb-10 max-w-3xl reveal-up">
-            <div className="eyebrow mb-4">Use cases</div>
-            <h2 className="section-title mb-4">
-              Fashion-tech infrastructure for multiple worlds
-            </h2>
-            <p className="lead">
-              Built for creators, athletes, brands, events, merchandise systems, and collectible ecosystems.
-            </p>
-          </div>
+          <SectionIntro
+            tight
+            eyebrow="Use cases"
+            title="Fashion-tech infrastructure for multiple worlds"
+            text="Built for creators, athletes, brands, events, merchandise systems, and collectible ecosystems."
+          />
 
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {useCases.map((item, index) => (
               <motion.div
                 key={item.title}
-                className="surface-card overflow-hidden p-3 tilt-card reveal-up"
+                className="surface-card overflow-hidden p-3"
                 variants={fadeUp}
                 initial="hidden"
                 whileInView="visible"
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.42, delay: index * 0.06 }}
               >
-                <div className="tilt-inner">
-                  <div className="group overflow-hidden rounded-[24px] media-frame">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="parallax-media h-[260px] w-full object-cover transition duration-700 group-hover:scale-[1.07]"
-                    />
-                  </div>
+                <div className="group overflow-hidden rounded-[24px] media-frame">
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-[260px] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                  />
+                </div>
 
-                  <div className="p-4">
-                    <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
-                    <p className="text-sm leading-7 text-white/65">{item.text}</p>
-                  </div>
+                <div className="p-4">
+                  <h3 className="display mb-3 text-2xl font-bold">{item.title}</h3>
+                  <p className="text-sm leading-7 text-white/65">{item.text}</p>
                 </div>
               </motion.div>
             ))}
@@ -733,94 +503,102 @@ export default function Home() {
       <section className="section">
         <div className="container">
           <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr] xl:items-center">
-            <div className="grid gap-4">
-              <div className="glass-card overflow-hidden p-3 tilt-card reveal-scale">
-                <div className="tilt-inner">
-                  <div className="group relative overflow-hidden rounded-[26px] media-frame">
-                    <img
-                      src={ctaWearableBanner}
-                      alt="Dresscode wearable merchandise call to action"
-                      className="parallax-media h-[260px] w-full object-cover transition duration-700 group-hover:scale-[1.06]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
-                        Wearable future
-                      </div>
-                      <div className="text-2xl font-bold">
-                        Merchandise with a second life
-                      </div>
+            <motion.div
+              className="grid gap-4"
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.45 }}
+            >
+              <div className="glass-card overflow-hidden p-3">
+                <div className="group relative overflow-hidden rounded-[26px] media-frame">
+                  <img
+                    src={ctaWearableBanner}
+                    alt="Dresscode wearable merchandise call to action"
+                    className="h-[260px] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-6">
+                    <div className="mb-2 text-sm uppercase tracking-[0.18em] text-[#5ECFCF]">
+                      Wearable future
+                    </div>
+                    <div className="text-2xl font-bold">
+                      Merchandise with a second life
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="glass-card overflow-hidden p-3 tilt-card reveal-scale">
-                <div className="tilt-inner">
-                  <div className="group relative overflow-hidden rounded-[26px] media-frame">
-                    <img
-                      src={ctaBanner}
-                      alt="Dresscode call to action"
-                      className="parallax-media h-[140px] w-full object-cover transition duration-700 group-hover:scale-[1.06]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
+              <div className="glass-card overflow-hidden p-3">
+                <div className="group relative overflow-hidden rounded-[26px] media-frame">
+                  <img
+                    src={ctaBanner}
+                    alt="Dresscode call to action"
+                    className="h-[140px] w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#071515]/85 via-[#071515]/20 to-transparent" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="surface-card p-8 md:p-10"
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.45 }}
+            >
+              <div className="eyebrow mb-5">Start now</div>
+              <h2 className="section-title mb-4">
+                Activate products, publish profiles, and manage official content
+              </h2>
+              <p className="lead mb-8">
+                Your foundation is already working. The next step is turning it into a
+                polished public platform that makes wearable media instantly understandable.
+              </p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-5 hightech-panel">
+                  <div className="mb-2 text-lg font-semibold">For users</div>
+                  <div className="text-sm leading-7 text-white/62">
+                    Activate, edit, publish, and share personal pages tied to physical products.
+                  </div>
+                </div>
+
+                <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-5 hightech-panel">
+                  <div className="mb-2 text-lg font-semibold">For brands</div>
+                  <div className="text-sm leading-7 text-white/62">
+                    Create locked official experiences, track scans, and control public storytelling.
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="surface-card p-8 md:p-10 tilt-card reveal-up">
-              <div className="tilt-inner">
-                <div className="eyebrow mb-5">Start now</div>
-                <h2 className="section-title mb-4">
-                  Activate products, publish profiles, and manage official content
-                </h2>
-                <p className="lead mb-8">
-                  Your foundation is already working. The next step is turning it into a
-                  polished public platform that makes wearable media instantly understandable.
-                </p>
+              <div className="mt-8 flex flex-col gap-4 md:flex-row">
+                {!loading && !user ? (
+                  <>
+                    <Link to="/portal" className="btn btn-primary glow-btn">
+                      Open Portal
+                    </Link>
+                    <Link to="/contact" className="btn btn-secondary">
+                      Contact Team
+                    </Link>
+                  </>
+                ) : null}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-5 hightech-panel">
-                    <div className="mb-2 text-lg font-semibold">For users</div>
-                    <div className="text-sm leading-7 text-white/62">
-                      Activate, edit, publish, and share personal pages tied to physical products.
-                    </div>
-                  </div>
-
-                  <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-5 hightech-panel">
-                    <div className="mb-2 text-lg font-semibold">For brands</div>
-                    <div className="text-sm leading-7 text-white/62">
-                      Create locked official experiences, track scans, and control public storytelling.
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 flex flex-col gap-4 md:flex-row">
-                  {!loading && !user ? (
-                    <>
-                      <Link to="/portal" className="btn btn-primary magnetic-btn glow-btn">
-                        Open Portal
-                      </Link>
-                      <Link to="/contact" className="btn btn-secondary magnetic-btn">
-                        Contact Team
-                      </Link>
-                    </>
-                  ) : null}
-
-                  {!loading && user ? (
-                    <>
-                      <Link to="/dashboard" className="btn btn-primary magnetic-btn glow-btn">
-                        Continue to Dashboard
-                      </Link>
-                      <Link to="/journal" className="btn btn-secondary magnetic-btn">
-                        Open Journal
-                      </Link>
-                    </>
-                  ) : null}
-                </div>
+                {!loading && user ? (
+                  <>
+                    <Link to="/dashboard" className="btn btn-primary glow-btn">
+                      Continue to Dashboard
+                    </Link>
+                    <Link to="/journal" className="btn btn-secondary">
+                      Open Journal
+                    </Link>
+                  </>
+                ) : null}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>

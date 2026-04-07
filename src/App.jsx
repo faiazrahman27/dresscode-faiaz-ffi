@@ -25,24 +25,21 @@ const STANDALONE_PREFIXES = ['/portal', '/dashboard', '/activate/', '/p/', '/edi
 const pageTransition = {
   initial: {
     opacity: 0,
-    y: 24,
-    filter: 'blur(10px)',
+    y: 12,
   },
   animate: {
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
     transition: {
-      duration: 0.6,
+      duration: 0.35,
       ease: [0.22, 1, 0.36, 1],
     },
   },
   exit: {
     opacity: 0,
-    y: 12,
-    filter: 'blur(8px)',
+    y: 8,
     transition: {
-      duration: 0.32,
+      duration: 0.2,
       ease: [0.4, 0, 1, 1],
     },
   },
@@ -85,7 +82,7 @@ export default function App() {
 
       {!isStandalone && <Navbar />}
 
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence initial={false} mode="sync">
         <Routes location={location} key={location.pathname}>
           <Route
             path="/"

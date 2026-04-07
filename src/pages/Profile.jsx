@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 
 import {
@@ -11,7 +10,20 @@ import {
   insertScan,
 } from '../lib/qr'
 
-gsap.registerPlugin(ScrollTrigger)
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+}
+
+const heroStagger = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.04,
+    },
+  },
+}
 
 function normalizeUrl(url, platform = '') {
   if (!url) return '#'
@@ -241,7 +253,6 @@ export default function Profile() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const rootRef = useRef(null)
 
   const [loading, setLoading] = useState(true)
   const [state, setState] = useState('loading')
@@ -249,214 +260,6 @@ export default function Profile() {
   const [profile, setProfile] = useState(null)
   const [template, setTemplate] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReducedMotion) return undefined
-
-    const cleanupFns = []
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.profile-hero-copy > *',
-        { opacity: 0, y: 34 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.85,
-          stagger: 0.08,
-          ease: 'power3.out',
-        }
-      )
-
-      gsap.fromTo(
-        '.profile-owner-controls',
-        { opacity: 0, y: -18 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.75,
-          ease: 'power3.out',
-          delay: 0.05,
-        }
-      )
-
-      gsap.fromTo(
-        '.profile-navbar-shell',
-        { opacity: 0, y: -16 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.78,
-          ease: 'power3.out',
-          delay: 0.08,
-        }
-      )
-
-      gsap.utils.toArray('.reveal-up').forEach((el, i) => {
-        gsap.fromTo(
-          el,
-          { opacity: 0, y: 38 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.78,
-            delay: i * 0.02,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: el,
-              start: 'top 86%',
-            },
-          }
-        )
-      })
-
-      gsap.utils.toArray('.reveal-scale').forEach((el) => {
-        gsap.fromTo(
-          el,
-          { opacity: 0, scale: 0.95 },
-          {
-            opacity: 1,
-            scale: 1,
-            duration: 0.75,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: el,
-              start: 'top 88%',
-            },
-          }
-        )
-      })
-
-      gsap.to('.pulse-grid', {
-        backgroundPosition: '220% 220%',
-        duration: 22,
-        repeat: -1,
-        ease: 'none',
-      })
-
-      gsap.to('.profile-bg-orb-1', {
-        y: 22,
-        x: 12,
-        duration: 6.6,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-      })
-
-      gsap.to('.profile-bg-orb-2', {
-        y: -18,
-        x: -12,
-        duration: 7.4,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-      })
-
-      gsap.to('.profile-bg-orb-3', {
-        y: 14,
-        x: 10,
-        duration: 8.1,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-      })
-
-      gsap.utils.toArray('.float-card').forEach((el, i) => {
-        gsap.to(el, {
-          y: i % 2 === 0 ? -8 : 8,
-          duration: 3.6 + i * 0.25,
-          repeat: -1,
-          yoyo: true,
-          ease: 'sine.inOut',
-        })
-      })
-
-      gsap.utils.toArray('.tilt-card').forEach((card) => {
-        const inner = card.querySelector('.tilt-inner')
-        if (!inner) return
-
-        const handleMove = (e) => {
-          const rect = card.getBoundingClientRect()
-          const x = e.clientX - rect.left
-          const y = e.clientY - rect.top
-          const rotateY = ((x / rect.width) - 0.5) * 8
-          const rotateX = -((y / rect.height) - 0.5) * 8
-
-          gsap.to(inner, {
-            rotateX,
-            rotateY,
-            transformPerspective: 900,
-            transformOrigin: 'center',
-            duration: 0.3,
-            ease: 'power2.out',
-          })
-
-          gsap.to(card, {
-            '--spotlight-x': `${x}px`,
-            '--spotlight-y': `${y}px`,
-            duration: 0.22,
-            ease: 'power2.out',
-          })
-        }
-
-        const handleLeave = () => {
-          gsap.to(inner, {
-            rotateX: 0,
-            rotateY: 0,
-            duration: 0.45,
-            ease: 'power3.out',
-          })
-        }
-
-        card.addEventListener('mousemove', handleMove)
-        card.addEventListener('mouseleave', handleLeave)
-
-        cleanupFns.push(() => {
-          card.removeEventListener('mousemove', handleMove)
-          card.removeEventListener('mouseleave', handleLeave)
-        })
-      })
-
-      gsap.utils.toArray('.magnetic-btn').forEach((btn) => {
-        const handleMove = (e) => {
-          const rect = btn.getBoundingClientRect()
-          const x = e.clientX - rect.left - rect.width / 2
-          const y = e.clientY - rect.top - rect.height / 2
-
-          gsap.to(btn, {
-            x: x * 0.11,
-            y: y * 0.11,
-            duration: 0.28,
-            ease: 'power3.out',
-          })
-        }
-
-        const handleLeave = () => {
-          gsap.to(btn, {
-            x: 0,
-            y: 0,
-            duration: 0.45,
-            ease: 'elastic.out(1, 0.45)',
-          })
-        }
-
-        btn.addEventListener('mousemove', handleMove)
-        btn.addEventListener('mouseleave', handleLeave)
-
-        cleanupFns.push(() => {
-          btn.removeEventListener('mousemove', handleMove)
-          btn.removeEventListener('mouseleave', handleLeave)
-        })
-      })
-    }, rootRef)
-
-    return () => {
-      cleanupFns.forEach((fn) => fn())
-      ctx.revert()
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill())
-    }
-  }, [])
 
   useEffect(() => {
     let active = true
@@ -571,10 +374,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div
-        ref={rootRef}
-        className="app-shell profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] text-white"
-      >
+      <div className="app-shell profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] text-white">
         <div className="page-noise" />
         <div className="pulse-grid" />
         <div className="profile-bg-orb profile-bg-orb-1" />
@@ -582,23 +382,24 @@ export default function Profile() {
         <div className="profile-bg-orb profile-bg-orb-3" />
         <GlitterField count={14} />
 
-        <div className="surface-card p-8 tilt-card reveal-scale">
-          <div className="tilt-inner">
-            <div className="eyebrow mb-4">Profile</div>
-            <h1 className="section-title mb-2">Loading profile...</h1>
-            <p className="muted">Preparing this live public experience.</p>
-          </div>
-        </div>
+        <motion.div
+          className="surface-card p-8"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.35 }}
+        >
+          <div className="eyebrow mb-4">Profile</div>
+          <h1 className="section-title mb-2">Loading profile...</h1>
+          <p className="muted">Preparing this live public experience.</p>
+        </motion.div>
       </div>
     )
   }
 
   if (state === 'not-found') {
     return (
-      <div
-        ref={rootRef}
-        className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white"
-      >
+      <div className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white">
         <div className="page-noise" />
         <div className="pulse-grid" />
         <div className="ambient-line ambient-line-1" />
@@ -610,28 +411,29 @@ export default function Profile() {
         <div className="hero-ring hero-ring-2" />
         <GlitterField count={16} />
 
-        <div className="surface-card w-full max-w-xl p-8 text-center tilt-card reveal-scale">
-          <div className="tilt-inner">
-            <div className="eyebrow mb-4">Profile error</div>
-            <h1 className="section-title mb-4">Code not found</h1>
-            <p className="muted mb-6">
-              This QR code does not exist or is not available.
-            </p>
-            <Link to="/" className="btn btn-primary glow-btn magnetic-btn">
-              Back to Home
-            </Link>
-          </div>
-        </div>
+        <motion.div
+          className="surface-card w-full max-w-xl p-8 text-center"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.35 }}
+        >
+          <div className="eyebrow mb-4">Profile error</div>
+          <h1 className="section-title mb-4">Code not found</h1>
+          <p className="muted mb-6">
+            This QR code does not exist or is not available.
+          </p>
+          <Link to="/" className="btn btn-primary glow-btn">
+            Back to Home
+          </Link>
+        </motion.div>
       </div>
     )
   }
 
   if (state === 'inactive') {
     return (
-      <div
-        ref={rootRef}
-        className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white"
-      >
+      <div className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white">
         <div className="page-noise" />
         <div className="pulse-grid" />
         <div className="ambient-line ambient-line-1" />
@@ -643,28 +445,29 @@ export default function Profile() {
         <div className="hero-ring hero-ring-2" />
         <GlitterField count={16} />
 
-        <div className="surface-card w-full max-w-xl p-8 text-center tilt-card reveal-scale">
-          <div className="tilt-inner">
-            <div className="eyebrow mb-4">Unavailable</div>
-            <h1 className="section-title mb-4">This code is inactive</h1>
-            <p className="muted mb-6">
-              The code exists, but it is currently disabled.
-            </p>
-            <Link to="/" className="btn btn-primary glow-btn magnetic-btn">
-              Back to Home
-            </Link>
-          </div>
-        </div>
+        <motion.div
+          className="surface-card w-full max-w-xl p-8 text-center"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.35 }}
+        >
+          <div className="eyebrow mb-4">Unavailable</div>
+          <h1 className="section-title mb-4">This code is inactive</h1>
+          <p className="muted mb-6">
+            The code exists, but it is currently disabled.
+          </p>
+          <Link to="/" className="btn btn-primary glow-btn">
+            Back to Home
+          </Link>
+        </motion.div>
       </div>
     )
   }
 
   if (state === 'no-profile') {
     return (
-      <div
-        ref={rootRef}
-        className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white"
-      >
+      <div className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white">
         <div className="page-noise" />
         <div className="pulse-grid" />
         <div className="ambient-line ambient-line-1" />
@@ -676,28 +479,29 @@ export default function Profile() {
         <div className="hero-ring hero-ring-2" />
         <GlitterField count={16} />
 
-        <div className="surface-card w-full max-w-xl p-8 text-center tilt-card reveal-scale">
-          <div className="tilt-inner">
-            <div className="eyebrow mb-4">Profile pending</div>
-            <h1 className="section-title mb-4">This code has no live page yet</h1>
-            <p className="muted mb-6">
-              The code is activated, but its public profile has not been set up yet.
-            </p>
-            <Link to="/" className="btn btn-primary glow-btn magnetic-btn">
-              Back to Home
-            </Link>
-          </div>
-        </div>
+        <motion.div
+          className="surface-card w-full max-w-xl p-8 text-center"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.35 }}
+        >
+          <div className="eyebrow mb-4">Profile pending</div>
+          <h1 className="section-title mb-4">This code has no live page yet</h1>
+          <p className="muted mb-6">
+            The code is activated, but its public profile has not been set up yet.
+          </p>
+          <Link to="/" className="btn btn-primary glow-btn">
+            Back to Home
+          </Link>
+        </motion.div>
       </div>
     )
   }
 
   if (state === 'error') {
     return (
-      <div
-        ref={rootRef}
-        className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white"
-      >
+      <div className="profile-page flex min-h-screen items-center justify-center bg-[#0A1F1F] px-4 text-white">
         <div className="page-noise" />
         <div className="pulse-grid" />
         <div className="ambient-line ambient-line-1" />
@@ -709,16 +513,20 @@ export default function Profile() {
         <div className="hero-ring hero-ring-2" />
         <GlitterField count={16} />
 
-        <div className="surface-card w-full max-w-xl p-8 text-center tilt-card reveal-scale">
-          <div className="tilt-inner">
-            <div className="eyebrow mb-4">System error</div>
-            <h1 className="section-title mb-4">Could not load profile</h1>
-            <p className="muted mb-6">{errorMessage || 'Unknown error.'}</p>
-            <Link to="/" className="btn btn-primary glow-btn magnetic-btn">
-              Back to Home
-            </Link>
-          </div>
-        </div>
+        <motion.div
+          className="surface-card w-full max-w-xl p-8 text-center"
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          transition={{ duration: 0.35 }}
+        >
+          <div className="eyebrow mb-4">System error</div>
+          <h1 className="section-title mb-4">Could not load profile</h1>
+          <p className="muted mb-6">{errorMessage || 'Unknown error.'}</p>
+          <Link to="/" className="btn btn-primary glow-btn">
+            Back to Home
+          </Link>
+        </motion.div>
       </div>
     )
   }
@@ -762,7 +570,6 @@ export default function Profile() {
 
   return (
     <div
-      ref={rootRef}
       className="profile-page min-h-screen px-4 py-8 text-white"
       style={backgroundStyle}
     >
@@ -779,11 +586,17 @@ export default function Profile() {
 
       <div className="container max-w-6xl">
         {isOwnerViewing ? (
-          <div className="profile-owner-controls mb-6 flex flex-wrap justify-end gap-3">
+          <motion.div
+            className="profile-owner-controls mb-6 flex flex-wrap justify-end gap-3"
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.4 }}
+          >
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="btn btn-secondary magnetic-btn"
+              className="btn btn-secondary"
             >
               Back
             </button>
@@ -792,7 +605,7 @@ export default function Profile() {
               <button
                 type="button"
                 onClick={() => navigate(`/editor/${code}`)}
-                className="btn btn-secondary magnetic-btn"
+                className="btn btn-secondary"
               >
                 Edit Page
               </button>
@@ -801,106 +614,145 @@ export default function Profile() {
             <button
               type="button"
               onClick={() => navigate('/dashboard')}
-              className="btn btn-primary glow-btn magnetic-btn"
+              className="btn btn-primary glow-btn"
             >
               Dashboard
             </button>
-          </div>
+          </motion.div>
         ) : null}
 
         {navbar.enabled ? (
-          <div className="profile-navbar-shell sticky top-4 z-40 mb-6 rounded-[20px] border border-[rgba(94,207,207,0.14)] bg-[rgba(8,24,24,0.78)] px-4 py-4 backdrop-blur-xl tilt-card">
-            <div className="tilt-inner">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="display text-xl font-bold">
-                  {navbar.brandText || 'Dresscode'}
-                </div>
+          <motion.div
+            className="profile-navbar-shell sticky top-4 z-40 mb-6 rounded-[20px] border border-[rgba(94,207,207,0.14)] bg-[rgba(8,24,24,0.78)] px-4 py-4 backdrop-blur-xl"
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            transition={{ duration: 0.4 }}
+          >
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="display text-xl font-bold">
+                {navbar.brandText || 'Dresscode'}
+              </div>
 
-                <div className="flex flex-wrap gap-3">
-                  {navbarLinks.map((link) => {
-                    const isExternal = link.type === 'external' || Boolean(link.url)
+              <div className="flex flex-wrap gap-3">
+                {navbarLinks.map((link) => {
+                  const isExternal = link.type === 'external' || Boolean(link.url)
 
-                    if (isExternal) {
-                      return (
-                        <a
-                          key={link.id}
-                          href={normalizeUrl(link.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn btn-secondary magnetic-btn"
-                        >
-                          {link.label || 'Link'}
-                        </a>
-                      )
-                    }
-
+                  if (isExternal) {
                     return (
                       <a
                         key={link.id}
-                        href={`#${link.anchorId || ''}`}
-                        className="btn btn-secondary magnetic-btn"
+                        href={normalizeUrl(link.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary"
                       >
                         {link.label || 'Link'}
                       </a>
                     )
-                  })}
-                </div>
+                  }
+
+                  return (
+                    <a
+                      key={link.id}
+                      href={`#${link.anchorId || ''}`}
+                      className="btn btn-secondary"
+                    >
+                      {link.label || 'Link'}
+                    </a>
+                  )
+                })}
               </div>
             </div>
-          </div>
+          </motion.div>
         ) : null}
 
-        <div className="profile-hero-shell mb-8 grid gap-6 xl:grid-cols-[1fr_auto] xl:items-start surface-card tilt-card p-6 md:p-8">
-          <div className="tilt-inner profile-hero-copy">
+        <motion.div
+          className="profile-hero-shell mb-8 grid gap-6 xl:grid-cols-[1fr_auto] xl:items-start surface-card p-6 md:p-8"
+          variants={heroStagger}
+          initial="hidden"
+          animate="visible"
+        >
+          <div className="profile-hero-copy">
             <div className="profile-card-glow" />
-            <div>
+            <motion.div variants={fadeUp} transition={{ duration: 0.45 }}>
               <div className="eyebrow mb-3">
                 {isLocked ? 'Official profile' : 'Public profile'}
               </div>
-              <h1 className="section-title mb-2">{pageTitle}</h1>
-              <p className="muted mb-4">{pageBio}</p>
+            </motion.div>
 
-              {isOpen ? (
-                <div className="profile-state-banner profile-state-banner-emerald max-w-2xl rounded-[18px] border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-white/80">
-                  This is an open code. Its owner can personalize the live page after activation.
-                </div>
-              ) : null}
+            <motion.h1
+              className="section-title mb-2"
+              variants={fadeUp}
+              transition={{ duration: 0.5 }}
+            >
+              {pageTitle}
+            </motion.h1>
 
-              {isLocked ? (
-                <div className="profile-state-banner profile-state-banner-cyan max-w-2xl rounded-[18px] border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/80">
-                  This is a locked code. The visible content is controlled by official templates.
-                </div>
-              ) : null}
-            </div>
+            <motion.p
+              className="muted mb-4"
+              variants={fadeUp}
+              transition={{ duration: 0.45 }}
+            >
+              {pageBio}
+            </motion.p>
+
+            {isOpen ? (
+              <motion.div
+                className="profile-state-banner profile-state-banner-emerald max-w-2xl rounded-[18px] border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-white/80"
+                variants={fadeUp}
+                transition={{ duration: 0.4 }}
+              >
+                This is an open code. Its owner can personalize the live page after activation.
+              </motion.div>
+            ) : null}
+
+            {isLocked ? (
+              <motion.div
+                className="profile-state-banner profile-state-banner-cyan max-w-2xl rounded-[18px] border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/80"
+                variants={fadeUp}
+                transition={{ duration: 0.4 }}
+              >
+                This is a locked code. The visible content is controlled by official templates.
+              </motion.div>
+            ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-3 xl:justify-end">
+          <motion.div
+            className="flex flex-wrap gap-3 xl:justify-end"
+            variants={fadeUp}
+            transition={{ duration: 0.4 }}
+          >
             {isLocked ? (
               <span className="badge">Official content</span>
             ) : (
               <span className="badge">Open code</span>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         <div className="grid gap-5">
           {sections.length === 0 ? (
-            <div className="surface-card p-8 tilt-card reveal-scale">
-              <div className="tilt-inner">
-                <div className="text-white/65">
-                  {isLocked
-                    ? 'This official page is active, but no content sections have been added yet.'
-                    : 'This page is active, but no content sections have been added yet.'}
-                </div>
+            <motion.div
+              className="surface-card p-8"
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ duration: 0.35 }}
+            >
+              <div className="text-white/65">
+                {isLocked
+                  ? 'This official page is active, but no content sections have been added yet.'
+                  : 'This page is active, but no content sections have been added yet.'}
               </div>
-            </div>
+            </motion.div>
           ) : null}
 
           {sections.map((section, sectionIndex) => (
-            <section
+            <motion.section
               key={section.id}
               id={section.anchorId || undefined}
-              className="profile-section-shell surface-card scroll-mt-28 tilt-card reveal-up"
+              className="profile-section-shell surface-card scroll-mt-28"
               style={{
                 paddingTop: `${section.paddingTop || 48}px`,
                 paddingBottom: `${section.paddingBottom || 48}px`,
@@ -911,27 +763,30 @@ export default function Profile() {
                     ? section.background.value
                     : undefined,
               }}
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.12 }}
+              transition={{ duration: 0.4, delay: sectionIndex * 0.03 }}
             >
-              <div className="tilt-inner">
-                <div className="mb-5">
-                  <h2 className="display text-2xl font-bold">{section.name}</h2>
-                </div>
-
-                <div
-                  className={`grid gap-4 ${getColumnGridClass(section.columns?.length || 1)}`}
-                >
-                  {(section.columns || []).map((column) => (
-                    <div key={column.id} className="grid gap-4">
-                      {(column.blocks || []).map((block) => (
-                        <div key={block.id} className="profile-block-shell">
-                          {renderBlock(block, accentColor)}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
+              <div className="mb-5">
+                <h2 className="display text-2xl font-bold">{section.name}</h2>
               </div>
-            </section>
+
+              <div
+                className={`grid gap-4 ${getColumnGridClass(section.columns?.length || 1)}`}
+              >
+                {(section.columns || []).map((column) => (
+                  <div key={column.id} className="grid gap-4">
+                    {(column.blocks || []).map((block) => (
+                      <div key={block.id} className="profile-block-shell">
+                        {renderBlock(block, accentColor)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </motion.section>
           ))}
         </div>
 

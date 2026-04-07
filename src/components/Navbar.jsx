@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import gsap from 'gsap'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
@@ -16,48 +15,25 @@ const navItems = [
 const mobileMenuVariants = {
   hidden: {
     opacity: 0,
-    y: -14,
-    height: 0,
+    y: -8,
   },
   visible: {
     opacity: 1,
     y: 0,
-    height: 'auto',
     transition: {
-      duration: 0.34,
-      ease: [0.22, 1, 0.36, 1],
-      when: 'beforeChildren',
-      staggerChildren: 0.05,
+      duration: 0.22,
+      ease: 'easeOut',
     },
   },
   exit: {
     opacity: 0,
-    y: -10,
-    height: 0,
+    y: -6,
     transition: {
-      duration: 0.25,
-      ease: [0.4, 0, 1, 1],
-      when: 'afterChildren',
-      staggerChildren: 0.03,
-      staggerDirection: -1,
+      duration: 0.18,
+      ease: 'easeIn',
     },
   },
 }
-
-const mobileItemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
-  },
-  exit: {
-    opacity: 0,
-    y: 8,
-    transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
-  },
-}
-
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -71,6 +47,7 @@ export default function Navbar() {
   const headerRef = useRef(null)
   const mobilePanelRef = useRef(null)
   const lastScrollY = useRef(0)
+  const ticking = useRef(false)
 
   async function handleSignOut() {
     await signOut()
@@ -82,25 +59,33 @@ export default function Navbar() {
   }, [location.pathname])
 
   useEffect(() => {
-    const handleScroll = () => {
+    const updateNavbar = () => {
       const currentY = window.scrollY
+
       setIsScrolled(currentY > 14)
 
-      if (open) {
-        lastScrollY.current = currentY
-        return
-      }
-
-      if (currentY > lastScrollY.current && currentY > 120) {
-        setNavHidden(true)
-      } else {
-        setNavHidden(false)
+      if (!open) {
+        if (currentY > lastScrollY.current && currentY > 120) {
+          setNavHidden(true)
+        } else {
+          setNavHidden(false)
+        }
       }
 
       lastScrollY.current = currentY
+      ticking.current = false
+    }
+
+    const handleScroll = () => {
+      if (ticking.current) return
+
+      ticking.current = true
+      window.requestAnimationFrame(updateNavbar)
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
+    updateNavbar()
+
     return () => window.removeEventListener('scroll', handleScroll)
   }, [open])
 
@@ -118,30 +103,11 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        '.navbar-entrance',
-        { opacity: 0, y: -18 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.65,
-          ease: 'power3.out',
-          clearProps: 'all',
-        }
-      )
-    }, headerRef)
-
-    return () => ctx.revert()
-  }, [])
-
   return (
     <header
       ref={headerRef}
       className={[
         'site-navbar',
-        'navbar-entrance',
         isScrolled ? 'site-navbar-scrolled' : '',
         navHidden ? 'site-navbar-hidden' : '',
         open ? 'site-navbar-open' : '',
@@ -233,7 +199,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {open ? (
           <motion.div
             ref={mobilePanelRef}
@@ -247,33 +213,20 @@ export default function Navbar() {
               <div className="navbar-mobile-panel">
                 <div className="navbar-mobile-grid">
                   {navItems.map((item) => (
-                    <motion.div
+                    <NavLink
                       key={item.to}
-                      variants={mobileItemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
+                      to={item.to}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        `navbar-mobile-link ${isActive ? 'navbar-mobile-link-active' : ''}`
+                      }
                     >
-                      <NavLink
-                        to={item.to}
-                        onClick={() => setOpen(false)}
-                        className={({ isActive }) =>
-                          `navbar-mobile-link ${isActive ? 'navbar-mobile-link-active' : ''}`
-                        }
-                      >
-                        {item.label}
-                      </NavLink>
-                    </motion.div>
+                      {item.label}
+                    </NavLink>
                   ))}
                 </div>
 
-                <motion.div
-                  className="navbar-mobile-actions"
-                  variants={mobileItemVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
+                <div className="navbar-mobile-actions">
                   {!loading && !user ? (
                     <>
                       <Link
@@ -329,7 +282,7 @@ export default function Navbar() {
                       </button>
                     </>
                   ) : null}
-                </motion.div>
+                </div>
               </div>
             </div>
           </motion.div>
