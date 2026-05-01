@@ -10,10 +10,8 @@ const LIMITS = {
   scratchCode: 14,
   accentColor: 20,
   articleTitle: 180,
-  articleSlug: 140,
   articleExcerpt: 500,
   articleBody: 20000,
-  articleCategory: 80,
   articleTag: 80,
   articleDate: 40,
   articleReadTime: 80,
@@ -23,12 +21,11 @@ const LIMITS = {
 }
 
 const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const QR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,79}$/
 const SCRATCH_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
-const SAFE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/
 
 const VALID_ROLES = new Set(['user', 'journalist', 'admin'])
@@ -62,24 +59,14 @@ const QR_UPDATE_FIELDS = new Set([
 ])
 
 const ARTICLE_FIELDS = new Set([
-  'title',
-  'slug',
-  'excerpt',
-  'body',
-  'content',
-  'cover_image',
-  'image_url',
-  'featured_image',
-  'category',
-  'tag',
-  'date',
-  'published',
   'author_id',
-  'source_url',
-  'reading_time',
+  'title',
+  'tag',
+  'excerpt',
+  'content',
+  'date',
   'read_time',
-  'seo_title',
-  'seo_description',
+  'published',
 ])
 
 function makeError(message) {
@@ -256,16 +243,6 @@ function sanitizeBoolean(value, fallback = false) {
   return fallback
 }
 
-function sanitizeInteger(value, min, max, fallback) {
-  const number = Number(value)
-
-  if (!Number.isInteger(number)) {
-    return fallback
-  }
-
-  return Math.max(min, Math.min(max, number))
-}
-
 function validatePageData(pageData) {
   if (!isPlainObject(pageData)) {
     return { value: defaultPageData, error: 'Page data must be an object.' }
@@ -437,53 +414,24 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
     payload.title = title
   }
 
-  if (Object.prototype.hasOwnProperty.call(input, 'slug')) {
-    const slug = sanitizeSingleLineText(input.slug, LIMITS.articleSlug).toLowerCase()
-
-    if (slug && !SAFE_SLUG_PATTERN.test(slug)) {
-      return {
-        payload: null,
-        error: 'Article slug can contain lowercase letters, numbers, and hyphens only.',
-      }
-    }
-
-    payload.slug = slug || null
+  if (Object.prototype.hasOwnProperty.call(input, 'tag')) {
+    payload.tag = sanitizeSingleLineText(input.tag, LIMITS.articleTag) || null
   }
 
   if (Object.prototype.hasOwnProperty.call(input, 'excerpt')) {
     payload.excerpt = sanitizeMultilineText(input.excerpt, LIMITS.articleExcerpt)
   }
 
-  if (Object.prototype.hasOwnProperty.call(input, 'body')) {
-    payload.body = sanitizeMultilineText(input.body, LIMITS.articleBody)
-  }
-
   if (Object.prototype.hasOwnProperty.call(input, 'content')) {
     payload.content = sanitizeMultilineText(input.content, LIMITS.articleBody)
   }
 
-  for (const field of ['cover_image', 'image_url', 'featured_image', 'source_url']) {
-    if (Object.prototype.hasOwnProperty.call(input, field)) {
-      const url = sanitizeUrl(input[field])
-
-      if (hasUnsafeProtocol(url)) {
-        return { payload: null, error: `${field} uses an unsafe protocol.` }
-      }
-
-      payload[field] = url || null
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'category')) {
-    payload.category = sanitizeSingleLineText(input.category, LIMITS.articleCategory) || null
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'tag')) {
-    payload.tag = sanitizeSingleLineText(input.tag, LIMITS.articleTag) || null
-  }
-
   if (Object.prototype.hasOwnProperty.call(input, 'date')) {
     payload.date = sanitizeSingleLineText(input.date, LIMITS.articleDate) || null
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'read_time')) {
+    payload.read_time = sanitizeSingleLineText(input.read_time, LIMITS.articleReadTime) || null
   }
 
   if (Object.prototype.hasOwnProperty.call(input, 'published')) {
@@ -494,23 +442,6 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
     const { value, error } = sanitizeRequiredUuid(input.author_id, 'Author ID')
     if (error) return { payload: null, error }
     payload.author_id = value
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'reading_time')) {
-    payload.reading_time = sanitizeInteger(input.reading_time, 0, 999, 0)
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'read_time')) {
-    payload.read_time = sanitizeSingleLineText(input.read_time, LIMITS.articleReadTime) || null
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'seo_title')) {
-    payload.seo_title = sanitizeSingleLineText(input.seo_title, LIMITS.articleTitle) || null
-  }
-
-  if (Object.prototype.hasOwnProperty.call(input, 'seo_description')) {
-    payload.seo_description =
-      sanitizeSingleLineText(input.seo_description, LIMITS.articleExcerpt) || null
   }
 
   return { payload, error: '' }
