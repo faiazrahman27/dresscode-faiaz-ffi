@@ -15,12 +15,13 @@ import HowItWorks from './pages/HowItWorks'
 import Solutions from './pages/Solutions'
 import UseCases from './pages/UseCases'
 import WhyItMatters from './pages/WhyItMatters'
+import Shop from './pages/Shop'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ProtectedRoute from './components/ProtectedRoute'
 import PageEditor from './pages/PageEditor'
 
-const STANDALONE_PREFIXES = ['/portal', '/dashboard', '/activate/', '/p/', '/editor/']
+const STANDALONE_PREFIXES = ['/portal', '/dashboard', '/activate/', '/p/', '/editor/', '/shop']
 
 const pageTransition = {
   initial: {
@@ -145,6 +146,14 @@ export default function App() {
             element={
               <RouteShell>
                 <Contact />
+              </RouteShell>
+            }
+          />
+          <Route
+            path="/shop"
+            element={
+              <RouteShell standalone>
+                <Shop />
               </RouteShell>
             }
           />
