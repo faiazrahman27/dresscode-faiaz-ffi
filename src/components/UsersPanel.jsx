@@ -7,6 +7,132 @@ import {
   updateUserRole,
 } from '../lib/dashboard'
 
+const ROLE_OPTIONS = new Set(['user', 'journalist', 'admin'])
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const LIMITS = {
+  email: 254,
+  search: 160,
+}
+
+function sanitizeLiveText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .slice(0, maxLength)
+}
+
+function sanitizeSingleLineText(value, maxLength) {
+  return sanitizeLiveText(value, maxLength).replace(/\s+/g, ' ').trim()
+}
+
+function sanitizeEmailInput(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .slice(0, LIMITS.email)
+}
+
+function sanitizeRole(value) {
+  return ROLE_OPTIONS.has(value) ? value : 'user'
+}
+
+function isValidEmail(email) {
+  return Boolean(email) && email.length <= LIMITS.email && EMAIL_PATTERN.test(email)
+}
+
+function isValidUuid(value) {
+  return Boolean(value) && UUID_PATTERN.test(value)
+}
+
+function getQrLabel(qrCode) {
+  if (!qrCode) return 'Unknown QR'
+  return qrCode.label || qrCode.code || qrCode.id
+}
+
+function validateRoleUpdate({ userId, role }) {
+  const safeRole = sanitizeRole(role)
+
+  if (!isValidUuid(userId)) {
+    return {
+      payload: null,
+      error: 'Invalid user ID.',
+    }
+  }
+
+  if (!ROLE_OPTIONS.has(safeRole)) {
+    return {
+      payload: null,
+      error: 'Invalid user role.',
+    }
+  }
+
+  return {
+    payload: {
+      userId,
+      role: safeRole,
+    },
+    error: '',
+  }
+}
+
+function validatePendingAssignment({ assignForm, qrCodes, currentUserId }) {
+  const email = normalizeAssignedEmail(sanitizeEmailInput(assignForm.email))
+  const role = sanitizeRole(assignForm.role)
+  const selectedQrCodeId = assignForm.qr_code_id || null
+
+  if (!isValidUuid(currentUserId)) {
+    return {
+      payload: null,
+      error: 'Admin user context is missing.',
+    }
+  }
+
+  if (!isValidEmail(email)) {
+    return {
+      payload: null,
+      error: 'Enter a valid email address.',
+    }
+  }
+
+  if (!ROLE_OPTIONS.has(role)) {
+    return {
+      payload: null,
+      error: 'Select a valid role.',
+    }
+  }
+
+  if (selectedQrCodeId) {
+    if (!isValidUuid(selectedQrCodeId)) {
+      return {
+        payload: null,
+        error: 'Selected QR code is invalid.',
+      }
+    }
+
+    const qrExists = qrCodes.some((code) => code.id === selectedQrCodeId)
+
+    if (!qrExists) {
+      return {
+        payload: null,
+        error: 'Selected QR code was not found.',
+      }
+    }
+  }
+
+  return {
+    payload: {
+      email,
+      role,
+      qr_code_id: selectedQrCodeId,
+      created_by: currentUserId,
+    },
+    error: '',
+  }
+}
+
 export default function UsersPanel({
   users,
   qrCodes,
@@ -29,7 +155,7 @@ export default function UsersPanel({
   })
 
   const filteredUsers = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = sanitizeSingleLineText(search, LIMITS.search).toLowerCase()
     if (!q) return users
 
     return users.filter((user) => {
@@ -45,9 +171,20 @@ export default function UsersPanel({
   async function handleRoleChange(userId, role) {
     setError('')
     setFeedback('')
+
+    const { payload, error: validationError } = validateRoleUpdate({
+      userId,
+      role,
+    })
+
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
     setSaving(true)
 
-    const { data, error } = await updateUserRole(userId, role)
+    const { data, error } = await updateUserRole(payload.userId, payload.role)
 
     setSaving(false)
 
@@ -65,30 +202,28 @@ export default function UsersPanel({
     setError('')
     setFeedback('')
 
-    const email = normalizeAssignedEmail(assignForm.email)
-    const selectedQrCodeId = assignForm.qr_code_id || null
+    const { payload, error: validationError } = validatePendingAssignment({
+      assignForm,
+      qrCodes,
+      currentUserId,
+    })
 
-    if (!email) {
-      setError('Email is required.')
+    if (validationError) {
+      setError(validationError)
       return
     }
 
     setSaving(true)
 
-    const { data, error } = await createPendingAssignment({
-      email,
-      role: assignForm.role,
-      qr_code_id: selectedQrCodeId,
-      created_by: currentUserId,
-    })
+    const { data, error } = await createPendingAssignment(payload)
 
     let reservedQr = null
     let reservationError = null
 
-    if (!error && selectedQrCodeId) {
+    if (!error && payload.qr_code_id) {
       const { data: updatedQr, error: updateError } = await updateQrCode(
-        selectedQrCodeId,
-        { assigned_email: email }
+        payload.qr_code_id,
+        { assigned_email: payload.email },
       )
 
       reservedQr = updatedQr
@@ -110,7 +245,7 @@ export default function UsersPanel({
 
     if (reservationError) {
       setError('Pending assignment was created, but the QR code could not be reserved for this email.')
-    } else if (selectedQrCodeId) {
+    } else if (payload.qr_code_id) {
       setFeedback('Pending assignment created and QR code reserved for this email.')
     } else {
       setFeedback('Pending assignment created successfully.')
@@ -126,6 +261,12 @@ export default function UsersPanel({
   async function handlePendingDelete(id) {
     setError('')
     setFeedback('')
+
+    if (!isValidUuid(id)) {
+      setError('Invalid pending assignment ID.')
+      return
+    }
+
     setSaving(true)
 
     const { error } = await deletePendingAssignment(id)
@@ -154,7 +295,8 @@ export default function UsersPanel({
             type="text"
             className="field max-w-sm"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            maxLength={LIMITS.search}
+            onChange={(e) => setSearch(sanitizeLiveText(e.target.value, LIMITS.search))}
             placeholder="Search users..."
           />
         </div>
@@ -169,7 +311,7 @@ export default function UsersPanel({
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="font-semibold">{user.full_name || 'Unnamed user'}</div>
-                    <div className="mt-1 text-sm text-white/55">{user.email}</div>
+                    <div className="mt-1 break-all text-sm text-white/55">{user.email}</div>
                     <div className="mt-2 text-sm text-white/55 capitalize">
                       Current role: {user.role}
                     </div>
@@ -178,7 +320,7 @@ export default function UsersPanel({
                   <div className="flex flex-wrap gap-3">
                     <select
                       className="field min-w-[180px]"
-                      value={user.role}
+                      value={ROLE_OPTIONS.has(user.role) ? user.role : 'user'}
                       onChange={(e) => handleRoleChange(user.id, e.target.value)}
                       disabled={saving}
                     >
@@ -218,8 +360,12 @@ export default function UsersPanel({
                 type="email"
                 className="field"
                 value={assignForm.email}
+                maxLength={LIMITS.email}
                 onChange={(e) =>
-                  setAssignForm((prev) => ({ ...prev, email: e.target.value }))
+                  setAssignForm((prev) => ({
+                    ...prev,
+                    email: sanitizeEmailInput(e.target.value),
+                  }))
                 }
                 placeholder="futureuser@example.com"
               />
@@ -231,7 +377,10 @@ export default function UsersPanel({
                 className="field"
                 value={assignForm.role}
                 onChange={(e) =>
-                  setAssignForm((prev) => ({ ...prev, role: e.target.value }))
+                  setAssignForm((prev) => ({
+                    ...prev,
+                    role: sanitizeRole(e.target.value),
+                  }))
                 }
               >
                 <option value="user">user</option>
@@ -246,13 +395,16 @@ export default function UsersPanel({
                 className="field"
                 value={assignForm.qr_code_id}
                 onChange={(e) =>
-                  setAssignForm((prev) => ({ ...prev, qr_code_id: e.target.value }))
+                  setAssignForm((prev) => ({
+                    ...prev,
+                    qr_code_id: e.target.value,
+                  }))
                 }
               >
                 <option value="">None</option>
                 {qrCodes.map((code) => (
                   <option key={code.id} value={code.id}>
-                    {code.label || code.code}
+                    {getQrLabel(code)}
                   </option>
                 ))}
               </select>
@@ -275,11 +427,11 @@ export default function UsersPanel({
                   key={item.id}
                   className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
                 >
-                  <div className="font-semibold">{item.email}</div>
+                  <div className="break-all font-semibold">{item.email}</div>
                   <div className="mt-1 text-sm text-white/55 capitalize">
-                    Role: {item.role}
+                    Role: {ROLE_OPTIONS.has(item.role) ? item.role : 'user'}
                   </div>
-                  <div className="mt-1 text-sm text-white/55">
+                  <div className="mt-1 break-all text-sm text-white/55">
                     QR: {item.qr_code_id || 'None'}
                   </div>
 

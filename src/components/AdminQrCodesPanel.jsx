@@ -10,6 +10,101 @@ import {
   updateQrCode,
 } from '../lib/dashboard'
 
+const QR_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{2,79}$/
+const SCRATCH_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+const CODE_TYPES = new Set(['open', 'locked'])
+const FILTER_OPTIONS = new Set(['all', 'pending', 'redeemed', 'open', 'locked', 'templated'])
+const SORT_OPTIONS = new Set([
+  'created_desc',
+  'created_asc',
+  'label_asc',
+  'label_desc',
+  'code_asc',
+  'code_desc',
+])
+
+const LIMITS = {
+  code: 80,
+  scratch: 14,
+  prefix: 12,
+  label: 120,
+  labelPrefix: 120,
+  email: 254,
+  search: 180,
+  bulkMin: 1,
+  bulkMax: 500,
+}
+
+function sanitizeLiveText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .slice(0, maxLength)
+}
+
+function sanitizeSingleLineText(value, maxLength) {
+  return sanitizeLiveText(value, maxLength).replace(/\s+/g, ' ').trim()
+}
+
+function sanitizeCodeValue(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .toUpperCase()
+    .slice(0, LIMITS.code)
+}
+
+function sanitizeScratchValue(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .toUpperCase()
+    .slice(0, LIMITS.scratch)
+}
+
+function sanitizePrefixValue(value) {
+  return String(value || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+    .slice(0, LIMITS.prefix)
+}
+
+function sanitizeEmailValue(value) {
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+    .slice(0, LIMITS.email)
+}
+
+function sanitizeCodeType(value) {
+  return CODE_TYPES.has(value) ? value : 'open'
+}
+
+function sanitizeSearchValue(value) {
+  return sanitizeLiveText(value, LIMITS.search)
+}
+
+function isValidAssignedEmail(email) {
+  if (!email) return true
+  return email.length <= LIMITS.email && EMAIL_PATTERN.test(email)
+}
+
+function isValidTemplateId(templateId, templates) {
+  if (!templateId) return false
+  return templates.some((template) => template.id === templateId)
+}
+
+function safeCsvValue(value) {
+  let normalized = String(value ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ')
+
+  // Prevent CSV formula injection when admin-exported CSV is opened in spreadsheet software.
+  if (/^[=+\-@]/.test(normalized.trim())) {
+    normalized = `'${normalized}`
+  }
+
+  return `"${normalized.replace(/"/g, '""')}"`
+}
+
 function downloadDataUrl(dataUrl, filename) {
   const a = document.createElement('a')
   a.href = dataUrl
@@ -45,9 +140,7 @@ function exportCsv(rows) {
   ])
 
   const csv = [headers, ...body]
-    .map((line) =>
-      line.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')
-    )
+    .map((line) => line.map((value) => safeCsvValue(value)).join(','))
     .join('\n')
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -61,6 +154,114 @@ function formatDate(value) {
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleString()
+}
+
+function validateSingleQrForm(form, templates, currentUserId) {
+  const code = sanitizeCodeValue(form.code)
+  const scratchCode = sanitizeScratchValue(form.scratch_code)
+  const label = sanitizeSingleLineText(form.label, LIMITS.label)
+  const codeType = sanitizeCodeType(form.code_type)
+  const templateId = form.template_id || ''
+  const assignedEmail = normalizeAssignedEmail(sanitizeEmailValue(form.assigned_email))
+
+  if (!currentUserId) {
+    return { payload: null, error: 'Admin user context is missing.' }
+  }
+
+  if (!QR_CODE_PATTERN.test(code)) {
+    return {
+      payload: null,
+      error: 'Public code must be 3–80 characters and may only contain letters, numbers, hyphens, or underscores.',
+    }
+  }
+
+  if (!SCRATCH_CODE_PATTERN.test(scratchCode)) {
+    return {
+      payload: null,
+      error: 'Scratch code must use the format XXXX-XXXX-XXXX.',
+    }
+  }
+
+  if (assignedEmail && !isValidAssignedEmail(assignedEmail)) {
+    return {
+      payload: null,
+      error: 'Assigned email is not valid.',
+    }
+  }
+
+  if (codeType === 'locked' && !isValidTemplateId(templateId, templates)) {
+    return {
+      payload: null,
+      error: 'Locked QR codes must have a valid template assigned.',
+    }
+  }
+
+  return {
+    payload: {
+      code,
+      scratch_code: scratchCode,
+      label,
+      code_type: codeType,
+      template_id: codeType === 'locked' ? templateId : null,
+      assigned_email: assignedEmail,
+      created_by: currentUserId,
+    },
+    error: '',
+  }
+}
+
+function validateBulkQrForm(bulkForm, templates, currentUserId) {
+  const count = Number(bulkForm.count)
+  const prefix = sanitizePrefixValue(bulkForm.prefix) || 'DC'
+  const labelPrefix = sanitizeSingleLineText(bulkForm.labelPrefix, LIMITS.labelPrefix)
+  const codeType = sanitizeCodeType(bulkForm.code_type)
+  const templateId = bulkForm.template_id || ''
+  const assignedEmail = normalizeAssignedEmail(sanitizeEmailValue(bulkForm.assigned_email))
+
+  if (!currentUserId) {
+    return { payload: null, error: 'Admin user context is missing.' }
+  }
+
+  if (!Number.isInteger(count) || count < LIMITS.bulkMin || count > LIMITS.bulkMax) {
+    return {
+      payload: null,
+      error: `Bulk count must be between ${LIMITS.bulkMin} and ${LIMITS.bulkMax}.`,
+    }
+  }
+
+  if (!/^[A-Z0-9]{1,12}$/.test(prefix)) {
+    return {
+      payload: null,
+      error: 'Code prefix must contain only letters and numbers.',
+    }
+  }
+
+  if (assignedEmail && !isValidAssignedEmail(assignedEmail)) {
+    return {
+      payload: null,
+      error: 'Assigned email is not valid.',
+    }
+  }
+
+  if (codeType === 'locked' && !isValidTemplateId(templateId, templates)) {
+    return {
+      payload: null,
+      error: 'Locked bulk QR codes must have a valid template assigned.',
+    }
+  }
+
+  return {
+    payload: {
+      count,
+      prefix,
+      labelPrefix,
+      code_type: codeType,
+      template_id: codeType === 'locked' ? templateId : null,
+      assigned_email: assignedEmail,
+      created_by: currentUserId,
+    },
+    error: '',
+  }
 }
 
 export default function AdminQrCodesPanel({
@@ -106,7 +307,7 @@ export default function AdminQrCodesPanel({
 
   const selectedQr = useMemo(
     () => qrCodes.find((item) => item.id === selectedQrId) || null,
-    [qrCodes, selectedQrId]
+    [qrCodes, selectedQrId],
   )
 
   useEffect(() => {
@@ -122,7 +323,9 @@ export default function AdminQrCodesPanel({
   }, [qrCodes])
 
   const filteredQrCodes = useMemo(() => {
-    const query = search.trim().toLowerCase()
+    const query = sanitizeSearchValue(search).trim().toLowerCase()
+    const safeFilter = FILTER_OPTIONS.has(filter) ? filter : 'all'
+    const safeSortBy = SORT_OPTIONS.has(sortBy) ? sortBy : 'created_desc'
 
     let rows = [...qrCodes]
 
@@ -144,29 +347,29 @@ export default function AdminQrCodesPanel({
       })
     }
 
-    if (filter === 'pending') rows = rows.filter((row) => row.activated === false)
-    if (filter === 'redeemed') rows = rows.filter((row) => row.activated === true)
-    if (filter === 'open') rows = rows.filter((row) => row.code_type === 'open')
-    if (filter === 'locked') rows = rows.filter((row) => row.code_type === 'locked')
-    if (filter === 'templated') rows = rows.filter((row) => Boolean(row.template_id))
+    if (safeFilter === 'pending') rows = rows.filter((row) => row.activated === false)
+    if (safeFilter === 'redeemed') rows = rows.filter((row) => row.activated === true)
+    if (safeFilter === 'open') rows = rows.filter((row) => row.code_type === 'open')
+    if (safeFilter === 'locked') rows = rows.filter((row) => row.code_type === 'locked')
+    if (safeFilter === 'templated') rows = rows.filter((row) => Boolean(row.template_id))
 
     rows.sort((a, b) => {
-      if (sortBy === 'created_desc') {
+      if (safeSortBy === 'created_desc') {
         return new Date(b.created_at || 0) - new Date(a.created_at || 0)
       }
-      if (sortBy === 'created_asc') {
+      if (safeSortBy === 'created_asc') {
         return new Date(a.created_at || 0) - new Date(b.created_at || 0)
       }
-      if (sortBy === 'label_asc') {
+      if (safeSortBy === 'label_asc') {
         return (a.label || a.code || '').localeCompare(b.label || b.code || '')
       }
-      if (sortBy === 'label_desc') {
+      if (safeSortBy === 'label_desc') {
         return (b.label || b.code || '').localeCompare(a.label || a.code || '')
       }
-      if (sortBy === 'code_asc') {
+      if (safeSortBy === 'code_asc') {
         return (a.code || '').localeCompare(b.code || '')
       }
-      if (sortBy === 'code_desc') {
+      if (safeSortBy === 'code_desc') {
         return (b.code || '').localeCompare(a.code || '')
       }
       return 0
@@ -186,7 +389,8 @@ export default function AdminQrCodesPanel({
   async function regenerateCode() {
     setForm((prev) => ({
       ...prev,
-      code: generatePublicCode(prev.prefix || 'DC'),
+      prefix: sanitizePrefixValue(prev.prefix) || 'DC',
+      code: generatePublicCode(sanitizePrefixValue(prev.prefix) || 'DC'),
     }))
   }
 
@@ -202,32 +406,20 @@ export default function AdminQrCodesPanel({
     setError('')
     setFeedback('')
 
-    if (!form.code.trim()) {
-      setError('Public code is required.')
-      return
-    }
+    const { payload, error: validationError } = validateSingleQrForm(
+      form,
+      templates,
+      currentUserId,
+    )
 
-    if (!form.scratch_code.trim()) {
-      setError('Scratch code is required.')
-      return
-    }
-
-    if (form.code_type === 'locked' && !form.template_id) {
-      setError('Locked QR codes must have a template assigned.')
+    if (validationError) {
+      setError(validationError)
       return
     }
 
     setSaving(true)
 
-    const { data, error } = await createQrCode({
-      code: form.code.trim().toUpperCase(),
-      scratch_code: form.scratch_code.trim().toUpperCase(),
-      label: form.label.trim(),
-      code_type: form.code_type,
-      template_id: form.template_id || null,
-      assigned_email: normalizeAssignedEmail(form.assigned_email),
-      created_by: currentUserId,
-    })
+    const { data, error } = await createQrCode(payload)
 
     setSaving(false)
 
@@ -263,29 +455,20 @@ export default function AdminQrCodesPanel({
     setError('')
     setFeedback('')
 
-    const safeCount = Number(bulkForm.count)
+    const { payload, error: validationError } = validateBulkQrForm(
+      bulkForm,
+      templates,
+      currentUserId,
+    )
 
-    if (!Number.isInteger(safeCount) || safeCount < 1 || safeCount > 500) {
-      setError('Bulk count must be between 1 and 500.')
-      return
-    }
-
-    if (bulkForm.code_type === 'locked' && !bulkForm.template_id) {
-      setError('Locked bulk QR codes must have a template assigned.')
+    if (validationError) {
+      setError(validationError)
       return
     }
 
     setSaving(true)
 
-    const { data, error } = await createBulkQrCodes({
-      count: safeCount,
-      prefix: bulkForm.prefix,
-      labelPrefix: bulkForm.labelPrefix.trim(),
-      code_type: bulkForm.code_type,
-      template_id: bulkForm.template_id || null,
-      assigned_email: normalizeAssignedEmail(bulkForm.assigned_email),
-      created_by: currentUserId,
-    })
+    const { data, error } = await createBulkQrCodes(payload)
 
     setSaving(false)
 
@@ -306,6 +489,8 @@ export default function AdminQrCodesPanel({
     setFeedback(`${data?.length || 0} QR codes created successfully.`)
     setBulkForm((prev) => ({
       ...prev,
+      prefix: payload.prefix,
+      labelPrefix: '',
       assigned_email: '',
     }))
   }
@@ -313,6 +498,17 @@ export default function AdminQrCodesPanel({
   async function handleTemplateAssign(qrCodeId, templateId) {
     setError('')
     setFeedback('')
+
+    if (!qrCodeId) {
+      setError('QR code ID is missing.')
+      return
+    }
+
+    if (templateId !== '__none__' && !isValidTemplateId(templateId, templates)) {
+      setError('Selected template is not valid.')
+      return
+    }
+
     setSaving(true)
 
     const payload =
@@ -334,7 +530,8 @@ export default function AdminQrCodesPanel({
   }
 
   async function handleDelete(qrCodeId, code) {
-    const confirmed = window.confirm(`Delete QR code ${code}? This cannot be undone.`)
+    const safeCode = sanitizeCodeValue(code)
+    const confirmed = window.confirm(`Delete QR code ${safeCode || code}? This cannot be undone.`)
     if (!confirmed) return
 
     setError('')
@@ -365,18 +562,32 @@ export default function AdminQrCodesPanel({
   }
 
   async function handleDownloadPng(code) {
-    const url = `${window.location.origin}/p/${code}`
+    const safeCode = sanitizeCodeValue(code)
+
+    if (!QR_CODE_PATTERN.test(safeCode)) {
+      setError('Cannot export PNG because this QR code value is invalid.')
+      return
+    }
+
+    const url = `${window.location.origin}/p/${safeCode}`
     const dataUrl = await QRCode.toDataURL(url, {
       width: 600,
       margin: 2,
     })
-    downloadDataUrl(dataUrl, `${code}.png`)
+    downloadDataUrl(dataUrl, `${safeCode}.png`)
   }
 
   async function drawPreview(code) {
     if (!canvasRef.current) return
 
-    const url = `${window.location.origin}/p/${code}`
+    const safeCode = sanitizeCodeValue(code)
+
+    if (!QR_CODE_PATTERN.test(safeCode)) {
+      setError('Cannot preview because this QR code value is invalid.')
+      return
+    }
+
+    const url = `${window.location.origin}/p/${safeCode}`
     await QRCode.toCanvas(canvasRef.current, url, {
       width: 240,
       margin: 2,
@@ -385,8 +596,20 @@ export default function AdminQrCodesPanel({
 
   function toggleExpanded(id) {
     setExpandedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     )
+  }
+
+  function handleSafeFilterChange(value) {
+    if (FILTER_OPTIONS.has(value)) {
+      setFilter(value)
+    }
+  }
+
+  function handleSafeSortChange(value) {
+    if (SORT_OPTIONS.has(value)) {
+      setSortBy(value)
+    }
   }
 
   return (
@@ -429,8 +652,12 @@ export default function AdminQrCodesPanel({
                   type="text"
                   className="field"
                   value={form.prefix}
+                  maxLength={LIMITS.prefix}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
+                    setForm((prev) => ({
+                      ...prev,
+                      prefix: sanitizePrefixValue(e.target.value),
+                    }))
                   }
                   placeholder="DC"
                 />
@@ -443,8 +670,12 @@ export default function AdminQrCodesPanel({
                     type="text"
                     className="field min-w-0"
                     value={form.code}
+                    maxLength={LIMITS.code}
                     onChange={(e) =>
-                      setForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))
+                      setForm((prev) => ({
+                        ...prev,
+                        code: sanitizeCodeValue(e.target.value),
+                      }))
                     }
                     placeholder="DC-XXXXXX-XXXX"
                   />
@@ -461,10 +692,11 @@ export default function AdminQrCodesPanel({
                     type="text"
                     className="field min-w-0"
                     value={form.scratch_code}
+                    maxLength={LIMITS.scratch}
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
-                        scratch_code: e.target.value.toUpperCase(),
+                        scratch_code: sanitizeScratchValue(e.target.value),
                       }))
                     }
                     placeholder="XXXX-XXXX-XXXX"
@@ -481,7 +713,13 @@ export default function AdminQrCodesPanel({
                   type="text"
                   className="field"
                   value={form.label}
-                  onChange={(e) => setForm((prev) => ({ ...prev, label: e.target.value }))}
+                  maxLength={LIMITS.label}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      label: sanitizeLiveText(e.target.value, LIMITS.label),
+                    }))
+                  }
                   placeholder="Campaign / player / item label"
                 />
               </div>
@@ -492,8 +730,12 @@ export default function AdminQrCodesPanel({
                   type="email"
                   className="field"
                   value={form.assigned_email}
+                  maxLength={LIMITS.email}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, assigned_email: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      assigned_email: sanitizeEmailValue(e.target.value),
+                    }))
                   }
                   placeholder="futurecustomer@example.com"
                 />
@@ -508,11 +750,15 @@ export default function AdminQrCodesPanel({
                   className="field"
                   value={form.code_type}
                   onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      code_type: e.target.value,
-                      template_id: e.target.value === 'locked' ? prev.template_id : '',
-                    }))
+                    setForm((prev) => {
+                      const nextCodeType = sanitizeCodeType(e.target.value)
+
+                      return {
+                        ...prev,
+                        code_type: nextCodeType,
+                        template_id: nextCodeType === 'locked' ? prev.template_id : '',
+                      }
+                    })
                   }
                 >
                   <option value="open">Open</option>
@@ -527,7 +773,10 @@ export default function AdminQrCodesPanel({
                     className="field"
                     value={form.template_id}
                     onChange={(e) =>
-                      setForm((prev) => ({ ...prev, template_id: e.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        template_id: e.target.value,
+                      }))
                     }
                   >
                     <option value="">Select a template</option>
@@ -550,12 +799,15 @@ export default function AdminQrCodesPanel({
                 <label className="mb-2 block text-sm font-medium">Quantity</label>
                 <input
                   type="number"
-                  min="1"
-                  max="500"
+                  min={LIMITS.bulkMin}
+                  max={LIMITS.bulkMax}
                   className="field"
                   value={bulkForm.count}
                   onChange={(e) =>
-                    setBulkForm((prev) => ({ ...prev, count: e.target.value }))
+                    setBulkForm((prev) => ({
+                      ...prev,
+                      count: e.target.value,
+                    }))
                   }
                   placeholder="10"
                 />
@@ -567,8 +819,12 @@ export default function AdminQrCodesPanel({
                   type="text"
                   className="field"
                   value={bulkForm.prefix}
+                  maxLength={LIMITS.prefix}
                   onChange={(e) =>
-                    setBulkForm((prev) => ({ ...prev, prefix: e.target.value.toUpperCase() }))
+                    setBulkForm((prev) => ({
+                      ...prev,
+                      prefix: sanitizePrefixValue(e.target.value),
+                    }))
                   }
                   placeholder="DC"
                 />
@@ -580,8 +836,12 @@ export default function AdminQrCodesPanel({
                   type="text"
                   className="field"
                   value={bulkForm.labelPrefix}
+                  maxLength={LIMITS.labelPrefix}
                   onChange={(e) =>
-                    setBulkForm((prev) => ({ ...prev, labelPrefix: e.target.value }))
+                    setBulkForm((prev) => ({
+                      ...prev,
+                      labelPrefix: sanitizeLiveText(e.target.value, LIMITS.labelPrefix),
+                    }))
                   }
                   placeholder="Team Drop / Player / Batch"
                 />
@@ -593,8 +853,12 @@ export default function AdminQrCodesPanel({
                   type="email"
                   className="field"
                   value={bulkForm.assigned_email}
+                  maxLength={LIMITS.email}
                   onChange={(e) =>
-                    setBulkForm((prev) => ({ ...prev, assigned_email: e.target.value }))
+                    setBulkForm((prev) => ({
+                      ...prev,
+                      assigned_email: sanitizeEmailValue(e.target.value),
+                    }))
                   }
                   placeholder="futurecustomer@example.com"
                 />
@@ -610,11 +874,15 @@ export default function AdminQrCodesPanel({
                   className="field"
                   value={bulkForm.code_type}
                   onChange={(e) =>
-                    setBulkForm((prev) => ({
-                      ...prev,
-                      code_type: e.target.value,
-                      template_id: e.target.value === 'locked' ? prev.template_id : '',
-                    }))
+                    setBulkForm((prev) => {
+                      const nextCodeType = sanitizeCodeType(e.target.value)
+
+                      return {
+                        ...prev,
+                        code_type: nextCodeType,
+                        template_id: nextCodeType === 'locked' ? prev.template_id : '',
+                      }
+                    })
                   }
                 >
                   <option value="open">Open</option>
@@ -629,7 +897,10 @@ export default function AdminQrCodesPanel({
                     className="field"
                     value={bulkForm.template_id}
                     onChange={(e) =>
-                      setBulkForm((prev) => ({ ...prev, template_id: e.target.value }))
+                      setBulkForm((prev) => ({
+                        ...prev,
+                        template_id: e.target.value,
+                      }))
                     }
                   >
                     <option value="">Select a template</option>
@@ -742,14 +1013,15 @@ export default function AdminQrCodesPanel({
               type="text"
               className="field"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              maxLength={LIMITS.search}
+              onChange={(e) => setSearch(sanitizeSearchValue(e.target.value))}
               placeholder="Search by code, scratch, label, type, template, email..."
             />
 
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setFilter('all')}
+                onClick={() => handleSafeFilterChange('all')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'all'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -761,7 +1033,7 @@ export default function AdminQrCodesPanel({
 
               <button
                 type="button"
-                onClick={() => setFilter('pending')}
+                onClick={() => handleSafeFilterChange('pending')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'pending'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -773,7 +1045,7 @@ export default function AdminQrCodesPanel({
 
               <button
                 type="button"
-                onClick={() => setFilter('redeemed')}
+                onClick={() => handleSafeFilterChange('redeemed')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'redeemed'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -785,7 +1057,7 @@ export default function AdminQrCodesPanel({
 
               <button
                 type="button"
-                onClick={() => setFilter('open')}
+                onClick={() => handleSafeFilterChange('open')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'open'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -797,7 +1069,7 @@ export default function AdminQrCodesPanel({
 
               <button
                 type="button"
-                onClick={() => setFilter('locked')}
+                onClick={() => handleSafeFilterChange('locked')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'locked'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -809,7 +1081,7 @@ export default function AdminQrCodesPanel({
 
               <button
                 type="button"
-                onClick={() => setFilter('templated')}
+                onClick={() => handleSafeFilterChange('templated')}
                 className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                   filter === 'templated'
                     ? 'bg-[#5ECFCF] text-[#071515]'
@@ -824,7 +1096,7 @@ export default function AdminQrCodesPanel({
               <select
                 className="field"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => handleSafeSortChange(e.target.value)}
               >
                 <option value="created_desc">Newest First</option>
                 <option value="created_asc">Oldest First</option>

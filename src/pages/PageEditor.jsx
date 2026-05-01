@@ -28,23 +28,165 @@ const heroStagger = {
   },
 }
 
-function GlitterField({ count = 16 }) {
-  return (
-    <div className="glitter-field" aria-hidden="true">
-      {Array.from({ length: count }).map((_, i) => (
-        <span
-          key={i}
-          className="glitter-dot"
-          style={{
-            left: `${(i * 9 + 7) % 100}%`,
-            top: `${(i * 11 + 13) % 100}%`,
-            animationDelay: `${(i % 9) * 0.55}s`,
-            animationDuration: `${4.2 + (i % 5)}s`,
-          }}
-        />
-      ))}
-    </div>
-  )
+const LIMITS = {
+  brandText: 80,
+  navbarLabel: 80,
+  anchorId: 80,
+  url: 2048,
+  sectionName: 120,
+  textContent: 5000,
+  shortText: 160,
+  bio: 1000,
+  caption: 240,
+  badge: 80,
+  sections: 40,
+  blocksPerColumn: 80,
+  socialsItems: 40,
+  spacerMin: 0,
+  spacerMax: 400,
+  radiusMin: 0,
+  radiusMax: 80,
+}
+
+const BACKGROUND_TYPES = new Set(['color', 'gradient', 'none'])
+const NAV_LINK_TYPES = new Set(['anchor', 'external'])
+const TEXT_ALIGNMENTS = new Set(['left', 'center', 'right'])
+const BASIC_ALIGNMENTS = new Set(['left', 'center'])
+const SOCIAL_LAYOUTS = new Set(['list', 'grid'])
+const GRADIENT_DIRECTIONS = new Set(['90deg', '180deg', '135deg', '45deg'])
+const BLOCK_TYPES = new Set(['avatar', 'text', 'link', 'image', 'badge', 'divider', 'spacer', 'socials'])
+const SOCIAL_PLATFORMS = new Set([
+  'instagram',
+  'tiktok',
+  'linkedin',
+  'youtube',
+  'twitter',
+  'github',
+  'spotify',
+  'facebook',
+  'discord',
+  'website',
+  'email',
+  'phone',
+])
+
+function sanitizeLiveText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .slice(0, maxLength)
+}
+
+function sanitizeSingleLineText(value, maxLength) {
+  return sanitizeLiveText(value, maxLength).replace(/\s+/g, ' ').trim()
+}
+
+function sanitizeMultilineText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{5,}/g, '\n\n\n\n')
+    .slice(0, maxLength)
+}
+
+function sanitizeUrl(value) {
+  return String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .trim()
+    .slice(0, LIMITS.url)
+}
+
+function hasUnsafeProtocol(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  return /^(javascript|data|vbscript):/.test(normalized)
+}
+
+function sanitizeAnchorId(value) {
+  return String(value || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, LIMITS.anchorId)
+}
+
+function sanitizeNumber(value, min, max, fallback) {
+  const number = Number(value)
+
+  if (!Number.isFinite(number)) {
+    return fallback
+  }
+
+  return Math.max(min, Math.min(max, number))
+}
+
+function isValidHexColor(value) {
+  return /^#([0-9A-Fa-f]{6})$/.test(value)
+}
+
+function normalizeHexColor(value, fallback) {
+  if (!value) return fallback
+  const trimmed = String(value).trim()
+  return isValidHexColor(trimmed) ? trimmed : fallback
+}
+
+function sanitizeBackgroundType(value, fallback = 'color') {
+  return BACKGROUND_TYPES.has(value) ? value : fallback
+}
+
+function sanitizeGradientDirection(value) {
+  return GRADIENT_DIRECTIONS.has(value) ? value : '135deg'
+}
+
+function sanitizeNavbarLinkType(value) {
+  return NAV_LINK_TYPES.has(value) ? value : 'anchor'
+}
+
+function sanitizeSocialPlatform(value) {
+  return SOCIAL_PLATFORMS.has(value) ? value : 'website'
+}
+
+function sanitizeSocialLayout(value) {
+  return SOCIAL_LAYOUTS.has(value) ? value : 'list'
+}
+
+function sanitizeTextAlign(value) {
+  return TEXT_ALIGNMENTS.has(value) ? value : 'left'
+}
+
+function sanitizeBasicAlign(value) {
+  return BASIC_ALIGNMENTS.has(value) ? value : 'left'
+}
+
+function findUnsafeUrl(pageData) {
+  const settings = pageData.settings || {}
+
+  if (hasUnsafeProtocol(settings.redirectUrl)) {
+    return 'Redirect URL uses an unsafe protocol.'
+  }
+
+  for (const link of pageData.navbar?.links || []) {
+    if (hasUnsafeProtocol(link.url)) {
+      return 'Navbar URL uses an unsafe protocol.'
+    }
+  }
+
+  for (const section of pageData.sections || []) {
+    for (const column of section.columns || []) {
+      for (const block of column.blocks || []) {
+        if (hasUnsafeProtocol(block.url) || hasUnsafeProtocol(block.imageUrl)) {
+          return 'A block contains an unsafe URL.'
+        }
+
+        for (const item of block.items || []) {
+          if (hasUnsafeProtocol(item.url)) {
+            return 'A social link contains an unsafe URL.'
+          }
+        }
+      }
+    }
+  }
+
+  return ''
 }
 
 function createNavbarLink() {
@@ -66,14 +208,220 @@ function createSocialItem() {
   }
 }
 
-function isValidHexColor(value) {
-  return /^#([0-9A-Fa-f]{6})$/.test(value)
+function sanitizeNavbarLink(link) {
+  const type = sanitizeNavbarLinkType(link?.type || (link?.url ? 'external' : 'anchor'))
+
+  return {
+    id: link?.id || crypto.randomUUID(),
+    label: sanitizeSingleLineText(link?.label || 'Link', LIMITS.navbarLabel),
+    type,
+    anchorId: sanitizeAnchorId(link?.anchorId || ''),
+    url: type === 'external' ? sanitizeUrl(link?.url || '') : '',
+  }
 }
 
-function normalizeHexColor(value, fallback) {
-  if (!value) return fallback
-  const trimmed = value.trim()
-  return isValidHexColor(trimmed) ? trimmed : fallback
+function sanitizeSocialItem(item) {
+  return {
+    id: item?.id || crypto.randomUUID(),
+    platform: sanitizeSocialPlatform(item?.platform || 'website'),
+    label: sanitizeSingleLineText(item?.label || 'Social', LIMITS.shortText),
+    url: sanitizeUrl(item?.url || ''),
+  }
+}
+
+function sanitizeBlock(block) {
+  if (!block || !BLOCK_TYPES.has(block.type)) return null
+
+  if (block.type === 'text') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'text',
+      content: sanitizeMultilineText(block.content || '', LIMITS.textContent),
+      align: sanitizeTextAlign(block.align || 'left'),
+      size: ['sm', 'md', 'lg'].includes(block.size) ? block.size : 'md',
+    }
+  }
+
+  if (block.type === 'link') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'link',
+      label: sanitizeSingleLineText(block.label || 'Untitled link', LIMITS.shortText),
+      url: sanitizeUrl(block.url || ''),
+      sublabel: sanitizeSingleLineText(block.sublabel || '', LIMITS.shortText),
+    }
+  }
+
+  if (block.type === 'socials') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'socials',
+      title: sanitizeSingleLineText(block.title || '', LIMITS.shortText),
+      layout: sanitizeSocialLayout(block.layout || 'list'),
+      items: (block.items || []).slice(0, LIMITS.socialsItems).map(sanitizeSocialItem),
+    }
+  }
+
+  if (block.type === 'avatar') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'avatar',
+      imageUrl: sanitizeUrl(block.imageUrl || ''),
+      name: sanitizeSingleLineText(block.name || '', LIMITS.shortText),
+      bio: sanitizeMultilineText(block.bio || '', LIMITS.bio),
+      size: ['sm', 'md', 'lg'].includes(block.size) ? block.size : 'md',
+      showName: block.showName !== false,
+      showBio: block.showBio !== false,
+      align: sanitizeBasicAlign(block.align || 'left'),
+    }
+  }
+
+  if (block.type === 'image') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'image',
+      imageUrl: sanitizeUrl(block.imageUrl || ''),
+      alt: sanitizeSingleLineText(block.alt || '', LIMITS.shortText),
+      caption: sanitizeSingleLineText(block.caption || '', LIMITS.caption),
+      borderRadius: sanitizeNumber(
+        block.borderRadius,
+        LIMITS.radiusMin,
+        LIMITS.radiusMax,
+        20,
+      ),
+    }
+  }
+
+  if (block.type === 'badge') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'badge',
+      text: sanitizeSingleLineText(block.text || 'Badge', LIMITS.badge),
+    }
+  }
+
+  if (block.type === 'spacer') {
+    return {
+      id: block.id || crypto.randomUUID(),
+      type: 'spacer',
+      height: sanitizeNumber(
+        block.height,
+        LIMITS.spacerMin,
+        LIMITS.spacerMax,
+        24,
+      ),
+    }
+  }
+
+  return {
+    id: block.id || crypto.randomUUID(),
+    type: 'divider',
+  }
+}
+
+function sanitizePageData(rawPageData) {
+  const loadedPageData = rawPageData || defaultPageData
+  const loadedSettings = loadedPageData.settings || {}
+  const loadedBackground = loadedSettings.background || {}
+
+  return {
+    ...defaultPageData,
+    ...loadedPageData,
+    settings: {
+      ...defaultPageData.settings,
+      ...loadedSettings,
+      accentColor: normalizeHexColor(loadedSettings.accentColor, '#5ECFCF'),
+      redirectUrl: sanitizeUrl(loadedSettings.redirectUrl || ''),
+      background: {
+        type: sanitizeBackgroundType(loadedBackground.type || 'color'),
+        value: normalizeHexColor(loadedBackground.value, '#0A1F1F'),
+        gradientFrom: normalizeHexColor(loadedBackground.gradientFrom, '#0A1F1F'),
+        gradientTo: normalizeHexColor(loadedBackground.gradientTo, '#123B3B'),
+        gradientDirection: sanitizeGradientDirection(
+          loadedBackground.gradientDirection || '135deg',
+        ),
+      },
+    },
+    navbar: {
+      ...defaultPageData.navbar,
+      ...(loadedPageData.navbar || {}),
+      enabled: Boolean(loadedPageData.navbar?.enabled),
+      brandText: sanitizeSingleLineText(
+        loadedPageData.navbar?.brandText || '',
+        LIMITS.brandText,
+      ),
+      links: (loadedPageData.navbar?.links || []).map(sanitizeNavbarLink),
+    },
+    sections: (loadedPageData.sections || []).slice(0, LIMITS.sections).map((section, index) => ({
+      ...createEmptySection(index, section.columns?.length || 1),
+      ...section,
+      id: section.id || crypto.randomUUID(),
+      name: sanitizeSingleLineText(section.name || `Section ${index + 1}`, LIMITS.sectionName),
+      anchorId: sanitizeAnchorId(section.anchorId || ''),
+      paddingTop: sanitizeNumber(section.paddingTop, 0, 240, 48),
+      paddingBottom: sanitizeNumber(section.paddingBottom, 0, 240, 48),
+      paddingSides: sanitizeNumber(section.paddingSides, 0, 120, 24),
+      background: {
+        type: sanitizeBackgroundType(section.background?.type || 'none', 'none'),
+        value: section.background?.type === 'color'
+          ? normalizeHexColor(section.background?.value, '')
+          : '',
+      },
+      columns: (section.columns || []).slice(0, 4).map((column) => ({
+        id: column.id || crypto.randomUUID(),
+        blocks: (column.blocks || [])
+          .slice(0, LIMITS.blocksPerColumn)
+          .map(sanitizeBlock)
+          .filter(Boolean),
+      })),
+    })),
+  }
+}
+
+function sanitizeBlockField(block, field, value) {
+  if (field === 'content') return sanitizeMultilineText(value, LIMITS.textContent)
+  if (field === 'bio') return sanitizeMultilineText(value, LIMITS.bio)
+  if (field === 'url' || field === 'imageUrl') return sanitizeUrl(value)
+  if (field === 'align') {
+    return block.type === 'text' ? sanitizeTextAlign(value) : sanitizeBasicAlign(value)
+  }
+  if (field === 'layout') return sanitizeSocialLayout(value)
+  if (field === 'height') return sanitizeNumber(value, LIMITS.spacerMin, LIMITS.spacerMax, 24)
+  if (field === 'borderRadius') return sanitizeNumber(value, LIMITS.radiusMin, LIMITS.radiusMax, 20)
+  if (field === 'text') return sanitizeSingleLineText(value, LIMITS.badge)
+  if (field === 'caption') return sanitizeSingleLineText(value, LIMITS.caption)
+  if (field === 'alt') return sanitizeSingleLineText(value, LIMITS.shortText)
+  if (field === 'label' || field === 'sublabel' || field === 'title' || field === 'name') {
+    return sanitizeLiveText(value, LIMITS.shortText)
+  }
+
+  return sanitizeLiveText(value, LIMITS.shortText)
+}
+
+function sanitizeSocialItemField(field, value) {
+  if (field === 'platform') return sanitizeSocialPlatform(value)
+  if (field === 'url') return sanitizeUrl(value)
+  if (field === 'label') return sanitizeLiveText(value, LIMITS.shortText)
+  return sanitizeLiveText(value, LIMITS.shortText)
+}
+
+function GlitterField({ count = 16 }) {
+  return (
+    <div className="glitter-field" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <span
+          key={i}
+          className="glitter-dot"
+          style={{
+            left: `${(i * 9 + 7) % 100}%`,
+            top: `${(i * 11 + 13) % 100}%`,
+            animationDelay: `${(i % 9) * 0.55}s`,
+            animationDuration: `${4.2 + (i % 5)}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
 }
 
 export default function PageEditor() {
@@ -132,57 +480,9 @@ export default function PageEditor() {
         return
       }
 
-      const loadedPageData = codeProfile.page_data || defaultPageData
-
       setQrCode(qrCode)
       setCodeProfile(codeProfile)
-      setPageData({
-        ...defaultPageData,
-        ...loadedPageData,
-        settings: {
-          ...defaultPageData.settings,
-          ...(loadedPageData.settings || {}),
-          background: {
-            type: loadedPageData.settings?.background?.type || 'color',
-            value: loadedPageData.settings?.background?.value || '#0A1F1F',
-            gradientFrom: loadedPageData.settings?.background?.gradientFrom || '#0A1F1F',
-            gradientTo: loadedPageData.settings?.background?.gradientTo || '#123B3B',
-            gradientDirection:
-              loadedPageData.settings?.background?.gradientDirection || '135deg',
-          },
-        },
-        navbar: {
-          ...defaultPageData.navbar,
-          ...(loadedPageData.navbar || {}),
-          links: (loadedPageData.navbar?.links || []).map((link) => ({
-            id: link.id || crypto.randomUUID(),
-            label: link.label || 'Link',
-            type: link.type || (link.url ? 'external' : 'anchor'),
-            anchorId: link.anchorId || '',
-            url: link.url || '',
-          })),
-        },
-        sections: (loadedPageData.sections || []).map((section, index) => ({
-          ...createEmptySection(index, section.columns?.length || 1),
-          ...section,
-          columns: (section.columns || []).map((column) => ({
-            id: column.id || crypto.randomUUID(),
-            blocks: (column.blocks || []).map((block) => ({
-              ...block,
-              id: block.id || crypto.randomUUID(),
-              items:
-                block.type === 'socials'
-                  ? (block.items || []).map((item) => ({
-                      id: item.id || crypto.randomUUID(),
-                      platform: item.platform || 'instagram',
-                      label: item.label || 'Social',
-                      url: item.url || '',
-                    }))
-                  : block.items,
-            })),
-          })),
-        })),
-      })
+      setPageData(sanitizePageData(codeProfile.page_data || defaultPageData))
       setLoading(false)
     }
 
@@ -198,7 +498,7 @@ export default function PageEditor() {
       ...prev,
       settings: {
         ...prev.settings,
-        [field]: value,
+        [field]: field === 'redirectUrl' ? sanitizeUrl(value) : value,
       },
     }))
   }
@@ -208,22 +508,32 @@ export default function PageEditor() {
       ...prev,
       settings: {
         ...prev.settings,
-        accentColor: value,
+        accentColor: sanitizeLiveText(value, 20),
       },
     }))
   }
 
   function updateBackgroundField(field, value) {
-    setPageData((prev) => ({
-      ...prev,
-      settings: {
-        ...prev.settings,
-        background: {
-          ...prev.settings.background,
-          [field]: value,
+    setPageData((prev) => {
+      let safeValue = value
+
+      if (field === 'type') safeValue = sanitizeBackgroundType(value)
+      if (field === 'value' || field === 'gradientFrom' || field === 'gradientTo') {
+        safeValue = sanitizeLiveText(value, 20)
+      }
+      if (field === 'gradientDirection') safeValue = sanitizeGradientDirection(value)
+
+      return {
+        ...prev,
+        settings: {
+          ...prev.settings,
+          background: {
+            ...prev.settings.background,
+            [field]: safeValue,
+          },
         },
-      },
-    }))
+      }
+    })
   }
 
   function updateNavbar(field, value) {
@@ -231,7 +541,9 @@ export default function PageEditor() {
       ...prev,
       navbar: {
         ...prev.navbar,
-        [field]: value,
+        [field]: field === 'brandText'
+          ? sanitizeLiveText(value, LIMITS.brandText)
+          : Boolean(value),
       },
     }))
   }
@@ -251,9 +563,34 @@ export default function PageEditor() {
       ...prev,
       navbar: {
         ...prev.navbar,
-        links: (prev.navbar?.links || []).map((link) =>
-          link.id === linkId ? { ...link, [field]: value } : link
-        ),
+        links: (prev.navbar?.links || []).map((link) => {
+          if (link.id !== linkId) return link
+
+          if (field === 'type') {
+            const nextType = sanitizeNavbarLinkType(value)
+
+            return {
+              ...link,
+              type: nextType,
+              url: nextType === 'external' ? link.url || '' : '',
+              anchorId: nextType === 'anchor' ? link.anchorId || '' : '',
+            }
+          }
+
+          if (field === 'label') {
+            return { ...link, label: sanitizeLiveText(value, LIMITS.navbarLabel) }
+          }
+
+          if (field === 'url') {
+            return { ...link, url: sanitizeUrl(value) }
+          }
+
+          if (field === 'anchorId') {
+            return { ...link, anchorId: sanitizeAnchorId(value) }
+          }
+
+          return link
+        }),
       },
     }))
   }
@@ -269,6 +606,11 @@ export default function PageEditor() {
   }
 
   function addSection() {
+    if ((pageData.sections || []).length >= LIMITS.sections) {
+      setError(`A page can contain up to ${LIMITS.sections} sections.`)
+      return
+    }
+
     setPageData((prev) => ({
       ...prev,
       sections: [...prev.sections, createEmptySection(prev.sections.length, 1)],
@@ -285,9 +627,19 @@ export default function PageEditor() {
   function updateSection(sectionId, field, value) {
     setPageData((prev) => ({
       ...prev,
-      sections: prev.sections.map((section) =>
-        section.id === sectionId ? { ...section, [field]: value } : section
-      ),
+      sections: prev.sections.map((section) => {
+        if (section.id !== sectionId) return section
+
+        if (field === 'name') {
+          return { ...section, name: sanitizeLiveText(value, LIMITS.sectionName) }
+        }
+
+        if (field === 'anchorId') {
+          return { ...section, anchorId: sanitizeAnchorId(value) }
+        }
+
+        return section
+      }),
     }))
   }
 
@@ -295,12 +647,22 @@ export default function PageEditor() {
     setPageData((prev) => ({
       ...prev,
       sections: prev.sections.map((section) =>
-        section.id === sectionId ? resizeSectionColumns(section, newCount) : section
+        section.id === sectionId ? resizeSectionColumns(section, newCount) : section,
       ),
     }))
   }
 
   function addBlock(sectionId, columnId, blockType) {
+    if (!BLOCK_TYPES.has(blockType)) return
+
+    const targetSection = pageData.sections.find((section) => section.id === sectionId)
+    const targetColumn = targetSection?.columns?.find((column) => column.id === columnId)
+
+    if ((targetColumn?.blocks || []).length >= LIMITS.blocksPerColumn) {
+      setError(`Each column can contain up to ${LIMITS.blocksPerColumn} blocks.`)
+      return
+    }
+
     setPageData((prev) => ({
       ...prev,
       sections: prev.sections.map((section) => {
@@ -312,6 +674,7 @@ export default function PageEditor() {
             if (column.id !== columnId) return column
 
             const newBlock = createBlockByType(blockType)
+            if (!newBlock) return column
 
             return {
               ...column,
@@ -337,7 +700,9 @@ export default function PageEditor() {
             return {
               ...column,
               blocks: column.blocks.map((block) =>
-                block.id === blockId ? { ...block, [field]: value } : block
+                block.id === blockId
+                  ? { ...block, [field]: sanitizeBlockField(block, field, value) }
+                  : block,
               ),
             }
           }),
@@ -368,6 +733,15 @@ export default function PageEditor() {
   }
 
   function addSocialItem(sectionId, columnId, blockId) {
+    const targetSection = pageData.sections.find((section) => section.id === sectionId)
+    const targetColumn = targetSection?.columns?.find((column) => column.id === columnId)
+    const targetBlock = targetColumn?.blocks?.find((block) => block.id === blockId)
+
+    if ((targetBlock?.items || []).length >= LIMITS.socialsItems) {
+      setError(`A socials block can contain up to ${LIMITS.socialsItems} items.`)
+      return
+    }
+
     setPageData((prev) => ({
       ...prev,
       sections: prev.sections.map((section) => {
@@ -382,6 +756,7 @@ export default function PageEditor() {
               ...column,
               blocks: column.blocks.map((block) => {
                 if (block.id !== blockId) return block
+
                 return {
                   ...block,
                   items: [...(block.items || []), createSocialItem()],
@@ -409,10 +784,13 @@ export default function PageEditor() {
               ...column,
               blocks: column.blocks.map((block) => {
                 if (block.id !== blockId) return block
+
                 return {
                   ...block,
                   items: (block.items || []).map((item) =>
-                    item.id === itemId ? { ...item, [field]: value } : item
+                    item.id === itemId
+                      ? { ...item, [field]: sanitizeSocialItemField(field, value) }
+                      : item,
                   ),
                 }
               }),
@@ -438,6 +816,7 @@ export default function PageEditor() {
               ...column,
               blocks: column.blocks.map((block) => {
                 if (block.id !== blockId) return block
+
                 return {
                   ...block,
                   items: (block.items || []).filter((item) => item.id !== itemId),
@@ -481,63 +860,53 @@ export default function PageEditor() {
   async function handleSave() {
     if (!codeProfile || qrCode?.code_type === 'locked') return
 
-    setSaving(true)
     setError('')
     setFeedback('')
 
-    const cleanedPageData = {
-      ...pageData,
-      settings: {
-        ...pageData.settings,
-        accentColor: normalizeHexColor(pageData.settings?.accentColor, '#5ECFCF'),
-        background: {
-          ...pageData.settings.background,
-          type: pageData.settings?.background?.type || 'color',
-          value: normalizeHexColor(pageData.settings?.background?.value, '#0A1F1F'),
-          gradientFrom: normalizeHexColor(
-            pageData.settings?.background?.gradientFrom,
-            '#0A1F1F'
-          ),
-          gradientTo: normalizeHexColor(
-            pageData.settings?.background?.gradientTo,
-            '#123B3B'
-          ),
-          gradientDirection:
-            pageData.settings?.background?.gradientDirection || '135deg',
-        },
-      },
+    const cleanedPageData = sanitizePageData(pageData)
+    const unsafeUrlError = findUnsafeUrl(cleanedPageData)
+
+    if (unsafeUrlError) {
+      setError(unsafeUrlError)
+      return
     }
+
+    setSaving(true)
 
     const allBlocks =
       cleanedPageData.sections?.flatMap(
-        (section) => section.columns?.flatMap((column) => column.blocks || []) || []
+        (section) => section.columns?.flatMap((column) => column.blocks || []) || [],
       ) || []
 
     const firstAvatarBlock = allBlocks.find((block) => block.type === 'avatar') || null
 
     const cleanedAvatarName =
       firstAvatarBlock?.name && firstAvatarBlock.name !== 'Your Name'
-        ? firstAvatarBlock.name
+        ? sanitizeSingleLineText(firstAvatarBlock.name, LIMITS.shortText)
         : ''
 
     const cleanedAvatarBio =
       firstAvatarBlock?.bio && firstAvatarBlock.bio !== 'Short bio goes here.'
-        ? firstAvatarBlock.bio
+        ? sanitizeMultilineText(firstAvatarBlock.bio, LIMITS.bio)
         : ''
 
     const cleanedProfileName =
       codeProfile.full_name && codeProfile.full_name !== 'Your Name'
-        ? codeProfile.full_name
+        ? sanitizeSingleLineText(codeProfile.full_name, LIMITS.shortText)
         : ''
 
     const cleanedProfileBio =
       codeProfile.bio && codeProfile.bio !== 'Short bio goes here.'
-        ? codeProfile.bio
+        ? sanitizeMultilineText(codeProfile.bio, LIMITS.bio)
         : ''
+
+    const fallbackAvatarUrl = hasUnsafeProtocol(codeProfile.avatar_url)
+      ? ''
+      : sanitizeUrl(codeProfile.avatar_url || '')
 
     const derivedFullName = cleanedAvatarName || cleanedProfileName || ''
     const derivedBio = cleanedAvatarBio || cleanedProfileBio || ''
-    const derivedAvatarUrl = firstAvatarBlock?.imageUrl || codeProfile.avatar_url || ''
+    const derivedAvatarUrl = firstAvatarBlock?.imageUrl || fallbackAvatarUrl || ''
 
     const { data, error } = await saveCodeProfilePageData(codeProfile.id, cleanedPageData, {
       full_name: derivedFullName,
@@ -565,6 +934,7 @@ export default function PageEditor() {
           <textarea
             className="field min-h-[120px]"
             value={block.content || ''}
+            maxLength={LIMITS.textContent}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'content', e.target.value)}
             placeholder="Write your text..."
           />
@@ -588,6 +958,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.label || ''}
+            maxLength={LIMITS.shortText}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'label', e.target.value)}
             placeholder="Button label"
           />
@@ -595,6 +966,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.url || ''}
+            maxLength={LIMITS.url}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'url', e.target.value)}
             placeholder="https://example.com or www.example.com"
           />
@@ -602,6 +974,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.sublabel || ''}
+            maxLength={LIMITS.shortText}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'sublabel', e.target.value)}
             placeholder="Optional sublabel"
           />
@@ -616,6 +989,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.title || ''}
+            maxLength={LIMITS.shortText}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'title', e.target.value)}
             placeholder="Block title"
           />
@@ -665,7 +1039,7 @@ export default function PageEditor() {
                         block.id,
                         item.id,
                         'platform',
-                        e.target.value
+                        e.target.value,
                       )
                     }
                   >
@@ -687,6 +1061,7 @@ export default function PageEditor() {
                     type="text"
                     className="field"
                     value={item.label || ''}
+                    maxLength={LIMITS.shortText}
                     onChange={(e) =>
                       updateSocialItem(
                         sectionId,
@@ -694,7 +1069,7 @@ export default function PageEditor() {
                         block.id,
                         item.id,
                         'label',
-                        e.target.value
+                        e.target.value,
                       )
                     }
                     placeholder="Label"
@@ -704,6 +1079,7 @@ export default function PageEditor() {
                     type="text"
                     className="field"
                     value={item.url || ''}
+                    maxLength={LIMITS.url}
                     onChange={(e) =>
                       updateSocialItem(
                         sectionId,
@@ -711,7 +1087,7 @@ export default function PageEditor() {
                         block.id,
                         item.id,
                         'url',
-                        e.target.value
+                        e.target.value,
                       )
                     }
                     placeholder="https://... or @username or email/phone"
@@ -729,6 +1105,8 @@ export default function PageEditor() {
         <input
           type="number"
           className="field"
+          min={LIMITS.spacerMin}
+          max={LIMITS.spacerMax}
           value={block.height || 24}
           onChange={(e) =>
             updateBlock(sectionId, columnId, block.id, 'height', Number(e.target.value || 24))
@@ -749,6 +1127,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.imageUrl || ''}
+            maxLength={LIMITS.url}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'imageUrl', e.target.value)}
             placeholder="Avatar image URL"
           />
@@ -757,7 +1136,7 @@ export default function PageEditor() {
             <span className="mb-2 block text-sm font-medium">Upload Avatar</span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif"
               className="field"
               onChange={(e) =>
                 handleUploadImage(sectionId, columnId, block, e.target.files?.[0])
@@ -773,12 +1152,14 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.name || ''}
+            maxLength={LIMITS.shortText}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'name', e.target.value)}
             placeholder="Display name"
           />
           <textarea
             className="field min-h-[100px]"
             value={block.bio || ''}
+            maxLength={LIMITS.bio}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'bio', e.target.value)}
             placeholder="Short bio"
           />
@@ -801,6 +1182,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.imageUrl || ''}
+            maxLength={LIMITS.url}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'imageUrl', e.target.value)}
             placeholder="Image URL"
           />
@@ -809,7 +1191,7 @@ export default function PageEditor() {
             <span className="mb-2 block text-sm font-medium">Upload Image</span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp,image/gif"
               className="field"
               onChange={(e) =>
                 handleUploadImage(sectionId, columnId, block, e.target.files?.[0])
@@ -825,6 +1207,7 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.alt || ''}
+            maxLength={LIMITS.shortText}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'alt', e.target.value)}
             placeholder="Alt text"
           />
@@ -832,12 +1215,15 @@ export default function PageEditor() {
             type="text"
             className="field"
             value={block.caption || ''}
+            maxLength={LIMITS.caption}
             onChange={(e) => updateBlock(sectionId, columnId, block.id, 'caption', e.target.value)}
             placeholder="Optional caption"
           />
           <input
             type="number"
             className="field"
+            min={LIMITS.radiusMin}
+            max={LIMITS.radiusMax}
             value={block.borderRadius ?? 20}
             onChange={(e) =>
               updateBlock(sectionId, columnId, block.id, 'borderRadius', Number(e.target.value || 0))
@@ -854,6 +1240,7 @@ export default function PageEditor() {
           type="text"
           className="field"
           value={block.text || ''}
+          maxLength={LIMITS.badge}
           onChange={(e) => updateBlock(sectionId, columnId, block.id, 'text', e.target.value)}
           placeholder="Badge text"
         />
@@ -1123,6 +1510,7 @@ export default function PageEditor() {
                       type="text"
                       className="field"
                       value={accentColor}
+                      maxLength={20}
                       onChange={(e) => updateAccentColor(e.target.value)}
                       placeholder="#5ECFCF"
                     />
@@ -1155,6 +1543,7 @@ export default function PageEditor() {
                         type="text"
                         className="field"
                         value={bg.value || '#0A1F1F'}
+                        maxLength={20}
                         onChange={(e) => updateBackgroundField('value', e.target.value)}
                         placeholder="#0A1F1F"
                       />
@@ -1175,6 +1564,7 @@ export default function PageEditor() {
                           type="text"
                           className="field"
                           value={bg.gradientFrom || '#0A1F1F'}
+                          maxLength={20}
                           onChange={(e) => updateBackgroundField('gradientFrom', e.target.value)}
                           placeholder="#0A1F1F"
                         />
@@ -1194,6 +1584,7 @@ export default function PageEditor() {
                           type="text"
                           className="field"
                           value={bg.gradientTo || '#123B3B'}
+                          maxLength={20}
                           onChange={(e) => updateBackgroundField('gradientTo', e.target.value)}
                           placeholder="#123B3B"
                         />
@@ -1224,6 +1615,7 @@ export default function PageEditor() {
                     type="text"
                     className="field"
                     value={pageData.settings?.redirectUrl || ''}
+                    maxLength={LIMITS.url}
                     onChange={(e) => updateSettings('redirectUrl', e.target.value)}
                     placeholder="https://example.com"
                   />
@@ -1257,6 +1649,7 @@ export default function PageEditor() {
                     type="text"
                     className="field"
                     value={pageData.navbar?.brandText || ''}
+                    maxLength={LIMITS.brandText}
                     onChange={(e) => updateNavbar('brandText', e.target.value)}
                     placeholder="Dresscode"
                   />
@@ -1296,6 +1689,7 @@ export default function PageEditor() {
                           type="text"
                           className="field"
                           value={link.label || ''}
+                          maxLength={LIMITS.navbarLabel}
                           onChange={(e) => updateNavbarLink(link.id, 'label', e.target.value)}
                           placeholder="Link label"
                         />
@@ -1314,6 +1708,7 @@ export default function PageEditor() {
                             type="text"
                             className="field"
                             value={link.url || ''}
+                            maxLength={LIMITS.url}
                             onChange={(e) => updateNavbarLink(link.id, 'url', e.target.value)}
                             placeholder="https://example.com or www.example.com"
                           />
@@ -1322,6 +1717,7 @@ export default function PageEditor() {
                             type="text"
                             className="field"
                             value={link.anchorId || ''}
+                            maxLength={LIMITS.anchorId}
                             onChange={(e) => updateNavbarLink(link.id, 'anchorId', e.target.value)}
                             placeholder="Anchor ID, e.g. links"
                           />
@@ -1386,6 +1782,7 @@ export default function PageEditor() {
                       type="text"
                       className="field"
                       value={section.name}
+                      maxLength={LIMITS.sectionName}
                       onChange={(e) => updateSection(section.id, 'name', e.target.value)}
                     />
                   </div>
@@ -1396,6 +1793,7 @@ export default function PageEditor() {
                       type="text"
                       className="field"
                       value={section.anchorId}
+                      maxLength={LIMITS.anchorId}
                       onChange={(e) => updateSection(section.id, 'anchorId', e.target.value)}
                       placeholder="links"
                     />
@@ -1429,30 +1827,16 @@ export default function PageEditor() {
                       </div>
 
                       <div className="mb-4 flex flex-wrap gap-2">
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'avatar')}>
-                          Avatar
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'text')}>
-                          Text
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'link')}>
-                          Link
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'socials')}>
-                          Socials
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'image')}>
-                          Image
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'badge')}>
-                          Badge
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'divider')}>
-                          Divider
-                        </button>
-                        <button type="button" className="btn btn-ghost" onClick={() => addBlock(section.id, column.id, 'spacer')}>
-                          Spacer
-                        </button>
+                        {['avatar', 'text', 'link', 'socials', 'image', 'badge', 'divider', 'spacer'].map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => addBlock(section.id, column.id, type)}
+                          >
+                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                          </button>
+                        ))}
                       </div>
 
                       <div className="grid gap-4">
