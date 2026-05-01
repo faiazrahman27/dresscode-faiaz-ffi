@@ -1,6 +1,26 @@
 import { useState } from 'react'
 import { createArticle, updateArticle, deleteArticle } from '../lib/dashboard'
 
+const emptyArticleForm = {
+  title: '',
+  tag: '',
+  excerpt: '',
+  content: '',
+  read_time: '',
+  published: false,
+}
+
+function buildArticleForm(article = {}) {
+  return {
+    title: article.title || '',
+    tag: article.tag || '',
+    excerpt: article.excerpt || '',
+    content: article.content || '',
+    read_time: article.read_time || '',
+    published: Boolean(article.published),
+  }
+}
+
 export default function JournalPanel({
   articles,
   user,
@@ -8,15 +28,7 @@ export default function JournalPanel({
   setError,
   setFeedback,
 }) {
-  const [form, setForm] = useState({
-    title: '',
-    tag: '',
-    excerpt: '',
-    content: '',
-    read_time: '',
-    published: false,
-  })
-
+  const [form, setForm] = useState(emptyArticleForm)
   const [editingId, setEditingId] = useState(null)
 
   async function handleSubmit(e) {
@@ -30,7 +42,12 @@ export default function JournalPanel({
     }
 
     const payload = {
-      ...form,
+      title: form.title,
+      tag: form.tag,
+      excerpt: form.excerpt,
+      content: form.content,
+      read_time: form.read_time,
+      published: Boolean(form.published),
       author_id: user.id,
       date: new Date().toISOString().split('T')[0],
     }
@@ -55,20 +72,13 @@ export default function JournalPanel({
       setFeedback('Article created.')
     }
 
-    setForm({
-      title: '',
-      tag: '',
-      excerpt: '',
-      content: '',
-      read_time: '',
-      published: false,
-    })
+    setForm(emptyArticleForm)
     setEditingId(null)
   }
 
   function handleEdit(article) {
     setEditingId(article.id)
-    setForm(article)
+    setForm(buildArticleForm(article))
   }
 
   async function handleDelete(id) {
@@ -84,38 +94,50 @@ export default function JournalPanel({
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
       <div className="surface-card p-6">
-        <h2 className="text-2xl font-bold mb-4">
+        <h2 className="mb-4 text-2xl font-bold">
           {editingId ? 'Edit Article' : 'Create Article'}
         </h2>
 
         <form onSubmit={handleSubmit} className="grid gap-3">
-          <input className="field" placeholder="Title"
+          <input
+            className="field"
+            placeholder="Title"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
 
-          <input className="field" placeholder="Tag"
+          <input
+            className="field"
+            placeholder="Tag"
             value={form.tag}
             onChange={(e) => setForm({ ...form, tag: e.target.value })}
           />
 
-          <input className="field" placeholder="Read Time (e.g. 5 min)"
+          <input
+            className="field"
+            placeholder="Read Time (e.g. 5 min)"
             value={form.read_time}
             onChange={(e) => setForm({ ...form, read_time: e.target.value })}
           />
 
-          <textarea className="field" placeholder="Excerpt"
+          <textarea
+            className="field"
+            placeholder="Excerpt"
             value={form.excerpt}
             onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
           />
 
-          <textarea className="field" rows={6} placeholder="Content"
+          <textarea
+            className="field"
+            rows={6}
+            placeholder="Content"
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
           />
 
           <label className="text-sm">
-            <input type="checkbox"
+            <input
+              type="checkbox"
               checked={form.published}
               onChange={(e) => setForm({ ...form, published: e.target.checked })}
             />
@@ -129,22 +151,30 @@ export default function JournalPanel({
       </div>
 
       <div className="surface-card p-6">
-        <h2 className="text-2xl font-bold mb-4">Articles</h2>
+        <h2 className="mb-4 text-2xl font-bold">Articles</h2>
 
         <div className="grid gap-4">
           {articles.map((a) => (
-            <div key={a.id} className="border p-3 rounded">
+            <div key={a.id} className="rounded border p-3">
               <div className="font-bold">{a.title}</div>
               <div className="text-sm opacity-70">{a.tag}</div>
               <div className="text-sm">
                 Published: {String(a.published)}
               </div>
 
-              <div className="flex gap-2 mt-3">
-                <button onClick={() => handleEdit(a)} className="btn btn-secondary">
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleEdit(a)}
+                  className="btn btn-secondary"
+                >
                   Edit
                 </button>
-                <button onClick={() => handleDelete(a.id)} className="btn btn-secondary">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(a.id)}
+                  className="btn btn-secondary"
+                >
                   Delete
                 </button>
               </div>
