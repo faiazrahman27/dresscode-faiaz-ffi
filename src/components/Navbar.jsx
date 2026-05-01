@@ -7,6 +7,7 @@ const navItems = [
   { to: '/how-it-works', label: 'How it Works' },
   { to: '/use-cases', label: 'Use Cases' },
   { to: '/solutions', label: 'Solutions' },
+  { to: '/shop', label: 'Shop' },
   { to: '/journal', label: 'Journal' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
@@ -118,25 +119,25 @@ export default function Navbar() {
       <div className="navbar-top-glow" />
       <div className="container">
         <div className="navbar-inner">
-          <Link to="/" className="navbar-brand">
+          <Link to="/" className="navbar-brand shrink-0">
             <div className="navbar-brand-mark">
               <span className="display navbar-brand-letter">D</span>
               <span className="navbar-brand-pulse" />
             </div>
 
-            <div>
-              <div className="display navbar-brand-title">Dresscode</div>
-              <div className="navbar-brand-subtitle">wearable media</div>
+            <div className="min-w-0">
+              <div className="display navbar-brand-title truncate">Dresscode</div>
+              <div className="navbar-brand-subtitle truncate">wearable media</div>
             </div>
           </Link>
 
-          <nav className="navbar-links hidden lg:flex">
+          <nav className="navbar-links hidden min-w-0 flex-1 items-center justify-center lg:flex">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
-                  `navbar-link ${isActive ? 'navbar-link-active' : ''}`
+                  `navbar-link whitespace-nowrap ${isActive ? 'navbar-link-active' : ''}`
                 }
               >
                 <span>{item.label}</span>
@@ -144,13 +145,16 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="navbar-actions hidden lg:flex">
+          <div className="navbar-actions hidden shrink-0 items-center lg:flex">
             {!loading && !user ? (
               <>
-                <Link to="/portal" className="btn btn-secondary navbar-btn">
+                <Link to="/portal" className="btn btn-secondary navbar-btn whitespace-nowrap">
                   Sign In
                 </Link>
-                <Link to="/portal" className="btn btn-primary glow-btn navbar-btn">
+                <Link
+                  to="/portal"
+                  className="btn btn-primary glow-btn navbar-btn whitespace-nowrap"
+                >
                   Get Started
                 </Link>
               </>
@@ -161,7 +165,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => navigate('/dashboard')}
-                  className="btn btn-secondary navbar-btn"
+                  className="btn btn-secondary navbar-btn whitespace-nowrap"
                 >
                   Dashboard
                 </button>
@@ -169,7 +173,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="btn btn-ghost navbar-btn"
+                  className="btn btn-ghost navbar-btn whitespace-nowrap"
                 >
                   Home
                 </button>
@@ -177,7 +181,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="btn btn-primary glow-btn navbar-btn"
+                  className="btn btn-primary glow-btn navbar-btn whitespace-nowrap"
                 >
                   Sign Out
                 </button>
@@ -189,7 +193,7 @@ export default function Navbar() {
             type="button"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
-            className={`navbar-toggle lg:hidden ${open ? 'is-open' : ''}`}
+            className={`navbar-toggle shrink-0 lg:hidden ${open ? 'is-open' : ''}`}
             onClick={() => setOpen((v) => !v)}
           >
             <span className="navbar-toggle-line" />
