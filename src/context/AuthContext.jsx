@@ -3,6 +3,15 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
+function normalizeEmail(email) {
+  return email?.trim().toLowerCase() || null
+}
+
+function getSafeAuthErrorMessage(error) {
+  if (!error) return 'Authentication request failed.'
+  return error.message || 'Authentication request failed.'
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -22,7 +31,7 @@ export function AuthProvider({ children }) {
         .maybeSingle()
 
       if (error) {
-        console.error('fetchProfile select error:', error)
+        console.warn('Could not load profile:', getSafeAuthErrorMessage(error))
       }
 
       if (data) {
@@ -34,22 +43,22 @@ export function AuthProvider({ children }) {
         .from('profiles')
         .insert({
           id: userId,
-          email: email || null,
+          email: normalizeEmail(email),
           role: 'user',
         })
         .select()
         .single()
 
       if (insertError) {
-        console.error('fetchProfile insert error:', insertError)
+        console.warn('Could not create profile:', getSafeAuthErrorMessage(insertError))
         setProfile(null)
         return null
       }
 
       setProfile(created)
       return created
-    } catch (err) {
-      console.error('fetchProfile unexpected error:', err)
+    } catch {
+      console.warn('Unexpected auth profile error.')
       setProfile(null)
       return null
     }
@@ -68,8 +77,8 @@ export function AuthProvider({ children }) {
       }
 
       return await fetchProfile(user.id, user.email)
-    } catch (err) {
-      console.error('refreshProfile error:', err)
+    } catch {
+      console.warn('Could not refresh profile.')
       setProfile(null)
       return null
     }
@@ -77,7 +86,10 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     const { error } = await supabase.auth.signOut()
-    if (error) throw error
+
+    if (error) {
+      throw error
+    }
 
     setUser(null)
     setProfile(null)
@@ -90,10 +102,7 @@ export function AuthProvider({ children }) {
       try {
         const {
           data: { session },
-          error,
         } = await supabase.auth.getSession()
-
-        console.log('getSession result:', { session, error })
 
         if (!isMounted) return
 
@@ -105,9 +114,9 @@ export function AuthProvider({ children }) {
         } else {
           setProfile(null)
         }
-      } catch (err) {
-        console.error('initAuth error:', err)
+      } catch {
         if (isMounted) {
+          console.warn('Could not initialize auth session.')
           setUser(null)
           setProfile(null)
         }
@@ -122,10 +131,9 @@ export function AuthProvider({ children }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('onAuthStateChange:', event, session)
-
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null
+
       setUser(currentUser)
 
       if (currentUser) {
@@ -152,7 +160,7 @@ export function AuthProvider({ children }) {
       refreshProfile,
       signOut,
     }),
-    [user, profile, loading]
+    [user, profile, loading],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

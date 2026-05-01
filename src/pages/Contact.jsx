@@ -43,7 +43,105 @@ const signals = [
   'Enterprise identity and authentication',
 ]
 
-const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mjgpebzn'
+const CONTACT_FORM_SCHEMA = {
+  name: {
+    min: 2,
+    max: 80,
+  },
+  email: {
+    max: 254,
+  },
+  company: {
+    max: 120,
+  },
+  message: {
+    min: 10,
+    max: 3000,
+  },
+}
+
+const ALLOWED_FORM_FIELDS = new Set([
+  'name',
+  'email',
+  'inquiryType',
+  'company',
+  'message',
+])
+
+const ALLOWED_INQUIRY_TYPES = new Set(inquiryOptions.map((item) => item.value))
+
+const formspreeEndpoint = import.meta.env.VITE_FORMSPREE_ENDPOINT || ''
+
+function sanitizeSingleLineText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength)
+}
+
+function sanitizeMultilineText(value, maxLength) {
+  return String(value || '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim()
+    .slice(0, maxLength)
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)
+}
+
+function validateContactForm(rawForm) {
+  const rawKeys = Object.keys(rawForm || {})
+  const unexpectedField = rawKeys.find((key) => !ALLOWED_FORM_FIELDS.has(key))
+
+  if (unexpectedField) {
+    return {
+      data: null,
+      error: 'Invalid form payload.',
+    }
+  }
+
+  const sanitized = {
+    name: sanitizeSingleLineText(rawForm.name, CONTACT_FORM_SCHEMA.name.max),
+    email: sanitizeSingleLineText(rawForm.email, CONTACT_FORM_SCHEMA.email.max).toLowerCase(),
+    inquiryType: ALLOWED_INQUIRY_TYPES.has(rawForm.inquiryType)
+      ? rawForm.inquiryType
+      : 'general',
+    company: sanitizeSingleLineText(rawForm.company, CONTACT_FORM_SCHEMA.company.max),
+    message: sanitizeMultilineText(rawForm.message, CONTACT_FORM_SCHEMA.message.max),
+  }
+
+  if (sanitized.name.length < CONTACT_FORM_SCHEMA.name.min) {
+    return {
+      data: null,
+      error: 'Name must be at least 2 characters.',
+    }
+  }
+
+  if (!isValidEmail(sanitized.email)) {
+    return {
+      data: null,
+      error: 'Enter a valid email address.',
+    }
+  }
+
+  if (sanitized.message.length < CONTACT_FORM_SCHEMA.message.min) {
+    return {
+      data: null,
+      error: 'Message must be at least 10 characters.',
+    }
+  }
+
+  return {
+    data: sanitized,
+    error: '',
+  }
+}
 
 function GlitterField({ count = 16 }) {
   return (
@@ -96,6 +194,12 @@ export default function Contact() {
 
   function handleChange(e) {
     const { name, value } = e.target
+
+    // Reject unexpected fields instead of blindly merging arbitrary input.
+    if (!ALLOWED_FORM_FIELDS.has(name)) {
+      return
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -109,18 +213,28 @@ export default function Contact() {
     setError('')
 
     try {
-      const response = await fetch(FORMSPREE_ENDPOINT, {
+      if (!formspreeEndpoint) {
+        throw new Error('Contact endpoint is not configured.')
+      }
+
+      const { data: sanitizedForm, error: validationError } = validateContactForm(form)
+
+      if (validationError) {
+        throw new Error(validationError)
+      }
+
+      const response = await fetch(formspreeEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
         body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          inquiryType: form.inquiryType,
-          company: form.company,
-          message: form.message,
+          name: sanitizedForm.name,
+          email: sanitizedForm.email,
+          inquiryType: sanitizedForm.inquiryType,
+          company: sanitizedForm.company,
+          message: sanitizedForm.message,
         }),
       })
 
@@ -271,6 +385,9 @@ export default function Contact() {
                         className="field"
                         placeholder="Your name"
                         required
+                        minLength={CONTACT_FORM_SCHEMA.name.min}
+                        maxLength={CONTACT_FORM_SCHEMA.name.max}
+                        autoComplete="name"
                       />
                     </div>
 
@@ -284,6 +401,8 @@ export default function Contact() {
                         className="field"
                         placeholder="you@example.com"
                         required
+                        maxLength={CONTACT_FORM_SCHEMA.email.max}
+                        autoComplete="email"
                       />
                     </div>
                   </div>
@@ -316,6 +435,8 @@ export default function Contact() {
                         onChange={handleChange}
                         className="field"
                         placeholder="Optional"
+                        maxLength={CONTACT_FORM_SCHEMA.company.max}
+                        autoComplete="organization"
                       />
                     </div>
                   </div>
@@ -329,7 +450,12 @@ export default function Contact() {
                       className="field min-h-[160px]"
                       placeholder="Tell me what you want to build or ask."
                       required
+                      minLength={CONTACT_FORM_SCHEMA.message.min}
+                      maxLength={CONTACT_FORM_SCHEMA.message.max}
                     />
+                    <div className="mt-2 text-xs text-white/45">
+                      {form.message.length}/{CONTACT_FORM_SCHEMA.message.max} characters
+                    </div>
                   </div>
 
                   <button
