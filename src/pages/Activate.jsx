@@ -38,10 +38,6 @@ function GlitterField({ count = 16 }) {
   )
 }
 
-function normalizeEmail(email) {
-  return email?.trim().toLowerCase() || ''
-}
-
 export default function Activate() {
   const { code } = useParams()
   const navigate = useNavigate()
@@ -103,6 +99,20 @@ export default function Activate() {
     }
   }, [code, navigate])
 
+  const hasUserAssignment = Boolean(qrCode?.has_user_assignment || qrCode?.assigned_to)
+  const hasEmailAssignment = Boolean(qrCode?.has_email_assignment)
+
+  const assignedToCurrentUser = Boolean(qrCode?.assigned_to_current_user)
+  const assignedToDifferentUser = Boolean(qrCode?.assigned_to_different_user)
+
+  const assignedToCurrentEmail = Boolean(qrCode?.assigned_to_current_email)
+  const assignedToDifferentEmail = Boolean(qrCode?.assigned_to_different_email)
+
+  const unassignedCode = !hasUserAssignment && !hasEmailAssignment
+  const activationBlocked = assignedToDifferentUser || assignedToDifferentEmail
+  const isOpenCode = qrCode?.code_type === 'open'
+  const isLockedCode = qrCode?.code_type === 'locked'
+
   async function handleActivate(e) {
     e.preventDefault()
     setMessage('')
@@ -122,7 +132,9 @@ export default function Activate() {
     }
 
     if (assignedToDifferentEmail) {
-      setError('This QR code is assigned to another email. Please sign in with the email used for this assignment.')
+      setError(
+        'This QR code is assigned to another email. Please sign in with the email used for this assignment.',
+      )
       return
     }
 
@@ -210,28 +222,6 @@ export default function Activate() {
       </div>
     )
   }
-
-  const currentUserEmail = normalizeEmail(user?.email)
-  const assignedEmail = normalizeEmail(qrCode?.assigned_email)
-  const hasUserAssignment = Boolean(qrCode?.assigned_to)
-  const hasEmailAssignment = Boolean(assignedEmail)
-
-  const assignedToCurrentUser =
-    Boolean(user) && hasUserAssignment && qrCode.assigned_to === user.id
-
-  const assignedToDifferentUser =
-    Boolean(user) && hasUserAssignment && qrCode.assigned_to !== user.id
-
-  const assignedToCurrentEmail =
-    Boolean(user) && hasEmailAssignment && assignedEmail === currentUserEmail
-
-  const assignedToDifferentEmail =
-    Boolean(user) && hasEmailAssignment && assignedEmail !== currentUserEmail
-
-  const unassignedCode = !hasUserAssignment && !hasEmailAssignment
-  const activationBlocked = assignedToDifferentUser || assignedToDifferentEmail
-  const isOpenCode = qrCode?.code_type === 'open'
-  const isLockedCode = qrCode?.code_type === 'locked'
 
   return (
     <div className="activate-page min-h-screen bg-[#0A1F1F] text-white px-4 py-10">

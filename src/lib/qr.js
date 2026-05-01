@@ -1,15 +1,65 @@
 import { supabase } from './supabase'
 
+function normalizeCode(code) {
+  return code?.trim() || ''
+}
+
+function normalizeScratchCode(scratchCode) {
+  return scratchCode?.trim().toUpperCase() || ''
+}
+
+function normalizeQrState(qr) {
+  if (!qr) return null
+
+  return {
+    ...qr,
+
+    // Safe assignment-state fields returned by get_qr_activation_state.
+    // These do not expose assigned_email.
+    has_email_assignment: Boolean(qr.has_email_assignment),
+    assigned_to_current_email: Boolean(qr.assigned_to_current_email),
+    assigned_to_different_email: Boolean(qr.assigned_to_different_email),
+    has_user_assignment: Boolean(qr.has_user_assignment),
+    assigned_to_current_user: Boolean(qr.assigned_to_current_user),
+    assigned_to_different_user: Boolean(qr.assigned_to_different_user),
+  }
+}
+
 export async function getQrCodeByCode(code) {
-  const normalizedCode = code?.trim()
+  const normalizedCode = normalizeCode(code)
 
-  const { data, error } = await supabase
-    .from('qr_codes')
-    .select('*')
-    .eq('code', normalizedCode)
-    .maybeSingle()
+  if (!normalizedCode) {
+    return {
+      data: null,
+      error: { message: 'QR code is required.' },
+    }
+  }
 
-  return { data, error }
+  const { data, error } = await supabase.rpc('get_qr_activation_state', {
+    p_code: normalizedCode,
+  })
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  if (!data?.success) {
+    const message = data?.message || 'QR code not found.'
+
+    if (message.toLowerCase().includes('not found')) {
+      return { data: null, error: null }
+    }
+
+    return {
+      data: null,
+      error: { message },
+    }
+  }
+
+  return {
+    data: normalizeQrState(data.qr),
+    error: null,
+  }
 }
 
 export async function getCodeProfileByQrId(qrCodeId) {
@@ -33,8 +83,8 @@ export async function getTemplateById(templateId) {
 }
 
 export async function activateQrCode(codeValue, scratchCode) {
-  const normalizedCode = codeValue?.trim()
-  const normalizedScratch = scratchCode?.trim().toUpperCase()
+  const normalizedCode = normalizeCode(codeValue)
+  const normalizedScratch = normalizeScratchCode(scratchCode)
 
   if (!normalizedCode) {
     return {
@@ -76,12 +126,10 @@ export async function insertScan(qrCodeId) {
   const device =
     typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 120) : null
 
-  const { data, error } = await supabase
-    .from('scans')
-    .insert({
-      qr_code_id: qrCodeId,
-      device,
-    })
+  const { data, error } = await supabase.from('scans').insert({
+    qr_code_id: qrCodeId,
+    device,
+  })
 
   return { data, error }
 }

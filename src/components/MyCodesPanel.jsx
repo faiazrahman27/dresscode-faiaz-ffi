@@ -29,7 +29,7 @@ export default function MyCodesPanel({ codes, user }) {
           } catch {
             return [code.id, '']
           }
-        })
+        }),
       )
 
       if (!active) return
@@ -75,16 +75,12 @@ export default function MyCodesPanel({ codes, user }) {
     document.body.removeChild(a)
   }
 
-  function getStatusBadge({ isAssignedOnly, isActivatedByCurrentUser, isLocked, isOpen }) {
+  function getStatusBadge({ isAssignedOnly, isActivatedByCurrentUser }) {
     if (isAssignedOnly) {
       return <span className="badge">Assigned</span>
     }
 
-    if (isActivatedByCurrentUser && isLocked) {
-      return <span className="badge">Activated</span>
-    }
-
-    if (isActivatedByCurrentUser && isOpen) {
+    if (isActivatedByCurrentUser) {
       return <span className="badge">Activated</span>
     }
 
@@ -135,19 +131,7 @@ export default function MyCodesPanel({ codes, user }) {
       )
     }
 
-    if (!code.activated && isOpen) {
-      return (
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => navigate(`/activate/${code.code}`)}
-        >
-          Activate
-        </button>
-      )
-    }
-
-    if (!code.activated && isLocked) {
+    if (!code.activated) {
       return (
         <button
           type="button"
@@ -184,18 +168,20 @@ export default function MyCodesPanel({ codes, user }) {
 
         const isActivatedByCurrentUser =
           Boolean(code.activated) && code.activated_by === user?.id
+
+        const isAssignedToCurrentUser = code.assigned_to === user?.id
+        const isAssignedToCurrentEmail =
+          Boolean(assignedEmail) && assignedEmail === normalizedUserEmail
+
         const isAssignedOnly =
-          !code.activated &&
-          (code.assigned_to === user?.id ||
-            (Boolean(assignedEmail) && assignedEmail === normalizedUserEmail))
+          !code.activated && (isAssignedToCurrentUser || isAssignedToCurrentEmail)
+
         const isLocked = code.code_type === 'locked'
         const isOpen = code.code_type === 'open'
 
         const statusBadge = getStatusBadge({
           isAssignedOnly,
           isActivatedByCurrentUser,
-          isLocked,
-          isOpen,
         })
 
         const primaryAction = getPrimaryAction({
@@ -236,9 +222,24 @@ export default function MyCodesPanel({ codes, user }) {
 
                   <div className="mb-2 break-all text-sm text-white/55">{code.code}</div>
                   <div className="mb-3 break-all text-sm text-white/65">{publicUrl}</div>
-                  {assignedEmail ? (
-                    <div className="mb-3 break-all text-sm text-white/55">
-                      Reserved for {assignedEmail}
+
+                  {isAssignedToCurrentEmail && !code.activated ? (
+                    <div className="mb-3 rounded-[16px] border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/80">
+                      <div className="mb-1 font-semibold text-white">Reserved for your email</div>
+                      <div className="leading-7 text-white/70">
+                        This code is reserved for the email on your account. Activate it with
+                        the scratch code from the physical item.
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isAssignedToCurrentUser && !code.activated ? (
+                    <div className="mb-3 rounded-[16px] border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/80">
+                      <div className="mb-1 font-semibold text-white">Reserved for your account</div>
+                      <div className="leading-7 text-white/70">
+                        This code is reserved for your account. Activate it with the scratch
+                        code from the physical item.
+                      </div>
                     </div>
                   ) : null}
 

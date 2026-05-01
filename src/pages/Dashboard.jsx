@@ -41,6 +41,8 @@ const heroStagger = {
   },
 }
 
+const ADMIN_ONLY_TABS = ['qr-codes', 'users', 'templates']
+
 function GlitterField({ count = 16 }) {
   return (
     <div className="glitter-field" aria-hidden="true">
@@ -81,15 +83,26 @@ export default function Dashboard() {
   const [error, setError] = useState('')
 
   const role = profile?.role || 'user'
+  const isAdmin = role === 'admin'
+  const canManageJournal = isAdmin || role === 'journalist'
 
   const defaultTab = useMemo(() => {
-    if (role === 'admin') return 'qr-codes'
+    if (isAdmin) return 'qr-codes'
     return 'my-codes'
-  }, [role])
+  }, [isAdmin])
 
   useEffect(() => {
     setActiveTab(defaultTab)
   }, [defaultTab])
+
+  useEffect(() => {
+    const adminOnlyTabBlocked = !isAdmin && ADMIN_ONLY_TABS.includes(activeTab)
+    const journalTabBlocked = !canManageJournal && activeTab === 'journal'
+
+    if (adminOnlyTabBlocked || journalTabBlocked) {
+      setActiveTab(defaultTab)
+    }
+  }, [activeTab, canManageJournal, defaultTab, isAdmin])
 
   const loadDashboard = useCallback(async () => {
     if (!user || !profile) return
@@ -115,7 +128,7 @@ export default function Dashboard() {
       setScanCount(count || 0)
     }
 
-    if (role === 'admin') {
+    if (isAdmin) {
       const [
         { data: loadedUsers, error: usersError },
         { data: loadedPending, error: pendingError },
@@ -151,12 +164,17 @@ export default function Dashboard() {
       } else {
         setTemplates(loadedTemplates || [])
       }
+    } else {
+      setUsers([])
+      setPendingAssignments([])
+      setAllQrCodes([])
+      setTemplates([])
     }
 
-    if (role === 'admin' || role === 'journalist') {
+    if (canManageJournal) {
       const { data: loadedArticles, error: articlesError } = await getMyArticles(
         user.id,
-        role === 'admin'
+        isAdmin,
       )
 
       if (articlesError) {
@@ -164,10 +182,12 @@ export default function Dashboard() {
       } else {
         setArticles(loadedArticles || [])
       }
+    } else {
+      setArticles([])
     }
 
     setLoading(false)
-  }, [user, profile, role])
+  }, [canManageJournal, isAdmin, profile, user])
 
   useEffect(() => {
     loadDashboard()
@@ -195,7 +215,7 @@ export default function Dashboard() {
   }
 
   async function handleCreateTemplate(name) {
-    if (!user) return
+    if (!user || !isAdmin) return
 
     setSavingTemplate(true)
     setError('')
@@ -215,6 +235,8 @@ export default function Dashboard() {
   }
 
   async function handleSaveTemplate(templateId, updates) {
+    if (!isAdmin) return
+
     setSavingTemplate(true)
     setError('')
     setFeedback('')
@@ -259,18 +281,18 @@ export default function Dashboard() {
     (code) =>
       code.activated === true &&
       code.activated_by === user?.id &&
-      code.code_type === 'open'
+      code.code_type === 'open',
   )
 
   const activatedLockedCodes = codes.filter(
     (code) =>
       code.activated === true &&
       code.activated_by === user?.id &&
-      code.code_type === 'locked'
+      code.code_type === 'locked',
   )
 
   function renderWelcomeGuide() {
-    if (loading || role === 'admin') return null
+    if (loading || isAdmin) return null
 
     const hasCodes = codes.length > 0
     const showNewUserGuide = !hasCodes
@@ -365,6 +387,15 @@ export default function Dashboard() {
     )
   }
 
+  function renderUnavailablePanel() {
+    return (
+      <div className="surface-card p-8">
+        <h2 className="display mb-3 text-3xl font-bold">Panel not available</h2>
+        <p className="muted">This section is not available for your current account role.</p>
+      </div>
+    )
+  }
+
   function renderMainPanel() {
     if (loading) {
       return (
@@ -400,6 +431,8 @@ export default function Dashboard() {
     }
 
     if (activeTab === 'templates') {
+      if (!isAdmin) return renderUnavailablePanel()
+
       return (
         <TemplatesPanel
           templates={templates}
@@ -411,6 +444,8 @@ export default function Dashboard() {
     }
 
     if (activeTab === 'qr-codes') {
+      if (!isAdmin) return renderUnavailablePanel()
+
       return (
         <AdminQrCodesPanel
           qrCodes={allQrCodes}
@@ -419,7 +454,7 @@ export default function Dashboard() {
           onCreated={(newQrs) => setAllQrCodes((prev) => [...newQrs, ...prev])}
           onUpdated={(updatedQr) =>
             setAllQrCodes((prev) =>
-              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item))
+              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item)),
             )
           }
           onDeleted={(deletedId) =>
@@ -434,6 +469,8 @@ export default function Dashboard() {
     }
 
     if (activeTab === 'users') {
+      if (!isAdmin) return renderUnavailablePanel()
+
       return (
         <UsersPanel
           users={users}
@@ -446,7 +483,7 @@ export default function Dashboard() {
           setError={setError}
           onUserUpdated={(updatedUser) =>
             setUsers((prev) =>
-              prev.map((item) => (item.id === updatedUser.id ? updatedUser : item))
+              prev.map((item) => (item.id === updatedUser.id ? updatedUser : item)),
             )
           }
           onPendingCreated={(newPending) =>
@@ -457,7 +494,7 @@ export default function Dashboard() {
           }
           onQrUpdated={(updatedQr) =>
             setAllQrCodes((prev) =>
-              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item))
+              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item)),
             )
           }
         />
@@ -465,6 +502,8 @@ export default function Dashboard() {
     }
 
     if (activeTab === 'journal') {
+      if (!canManageJournal) return renderUnavailablePanel()
+
       return (
         <JournalPanel
           articles={articles}
@@ -476,11 +515,7 @@ export default function Dashboard() {
       )
     }
 
-    return (
-      <div className="surface-card p-8">
-        <h2 className="display text-3xl font-bold">Panel not available</h2>
-      </div>
-    )
+    return renderUnavailablePanel()
   }
 
   return (

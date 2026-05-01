@@ -72,9 +72,7 @@ function platformLabel(platform, fallback) {
 function renderBlock(block, accentColor) {
   if (block.type === 'avatar') {
     const alignClass =
-      block.align === 'center'
-        ? 'items-center text-center'
-        : 'items-start text-left'
+      block.align === 'center' ? 'items-center text-center' : 'items-start text-left'
 
     const rowClass =
       block.align === 'center'
@@ -98,7 +96,7 @@ function renderBlock(block, accentColor) {
             <div className="display text-3xl font-bold">{block.name}</div>
           ) : null}
           {block.showBio !== false && block.bio ? (
-            <div className="mt-2 text-white/65 leading-7 whitespace-pre-wrap">
+            <div className="mt-2 whitespace-pre-wrap leading-7 text-white/65">
               {block.bio}
             </div>
           ) : null}
@@ -116,11 +114,7 @@ function renderBlock(block, accentColor) {
           : 'text-left'
 
     const sizeClass =
-      block.size === 'lg'
-        ? 'text-xl'
-        : block.size === 'sm'
-          ? 'text-sm'
-          : 'text-base'
+      block.size === 'lg' ? 'text-xl' : block.size === 'sm' ? 'text-sm' : 'text-base'
 
     return (
       <div className={`${alignClass} ${sizeClass} whitespace-pre-wrap leading-7 text-white/88`}>
@@ -200,9 +194,7 @@ function renderBlock(block, accentColor) {
             style={{ borderRadius: `${block.borderRadius || 20}px` }}
           />
         ) : null}
-        {block.caption ? (
-          <div className="mt-3 text-sm text-white/55">{block.caption}</div>
-        ) : null}
+        {block.caption ? <div className="mt-3 text-sm text-white/55">{block.caption}</div> : null}
       </div>
     )
   }
@@ -301,8 +293,7 @@ export default function Profile() {
         return
       }
 
-      const isLockedTemplateCode =
-        qr.code_type === 'locked' && Boolean(qr.template_id)
+      const isLockedTemplateCode = qr.code_type === 'locked' && Boolean(qr.template_id)
 
       if (isLockedTemplateCode) {
         const { data: lockedTemplate, error: templateError } = await getTemplateById(qr.template_id)
@@ -550,21 +541,13 @@ export default function Profile() {
   const isLocked = qrCode?.code_type === 'locked'
   const isOpen = qrCode?.code_type === 'open'
 
-  const pageTitle =
-    profile?.full_name ||
-    template?.name ||
-    'Dresscode Profile'
+  const pageTitle = profile?.full_name || template?.name || 'Dresscode Profile'
 
   const pageBio =
-    profile?.bio ||
-    (isLocked
-      ? 'Official branded content.'
-      : 'This code is active and live.')
+    profile?.bio || (isLocked ? 'Official branded content.' : 'This code is active and live.')
 
   const isOwnerViewing =
-    user &&
-    qrCode &&
-    (qrCode.activated_by === user.id || qrCode.assigned_to === user.id)
+    user && qrCode && (qrCode.activated_by === user.id || qrCode.assigned_to === user.id)
 
   const canEditThisPage = isOwnerViewing && isOpen
 

@@ -169,7 +169,21 @@ export async function getEditableCodeProfileByCode(code, userId) {
 
   const { data: qrRows, error: qrError } = await supabase
     .from('qr_codes')
-    .select('*')
+    .select(
+      [
+        'id',
+        'code',
+        'label',
+        'code_type',
+        'activated',
+        'activated_by',
+        'assigned_to',
+        'created_by',
+        'created_at',
+        'is_active',
+        'template_id',
+      ].join(', '),
+    )
     .eq('code', normalizedCode)
     .eq('activated_by', userId)
 
@@ -237,8 +251,7 @@ export async function getEditableCodeProfileByCode(code, userId) {
     }
   }
 
-  const codeProfile =
-    profileRows && profileRows.length > 0 ? profileRows[0] : null
+  const codeProfile = profileRows && profileRows.length > 0 ? profileRows[0] : null
 
   if (!codeProfile) {
     return {

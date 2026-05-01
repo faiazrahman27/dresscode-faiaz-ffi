@@ -25,6 +25,9 @@ export async function getMyQrCodes(userId, email = '') {
     }
   }
 
+  // Authenticated dashboard-only lookup for future-customer reservations.
+  // Public profile/activation pages must not read assigned_email directly;
+  // they use safe RPCs from src/lib/qr.js instead.
   if (normalizedEmail) {
     const { data, error } = await supabase
       .from('qr_codes')
@@ -41,7 +44,7 @@ export async function getMyQrCodes(userId, email = '') {
   }
 
   const data = Array.from(rowsById.values()).sort(
-    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
   )
 
   return { data, error: null }
@@ -95,7 +98,7 @@ export async function getRecentScansForUserCodes(userId, limit = 20) {
         code: item.code,
         label: item.label,
       },
-    ])
+    ]),
   )
 
   const { data: scans, error } = await supabase
@@ -316,19 +319,17 @@ export async function createQrCode({
   created_by,
 }) {
   const normalizedAssignedEmail = normalizeAssignedEmail(assigned_email)
+
   const payload = {
     code,
     scratch_code,
     label: label || null,
     code_type,
     template_id: code_type === 'locked' ? template_id || null : null,
+    assigned_email: normalizedAssignedEmail,
     created_by,
     activated: false,
     is_active: true,
-  }
-
-  if (normalizedAssignedEmail) {
-    payload.assigned_email = normalizedAssignedEmail
   }
 
   const { data, error } = await supabase
@@ -351,22 +352,18 @@ export async function createBulkQrCodes({
 }) {
   const safeCount = Math.max(1, Math.min(500, Number(count) || 1))
   const normalizedAssignedEmail = normalizeAssignedEmail(assigned_email)
+
   const rows = Array.from({ length: safeCount }, (_, index) => ({
     code: generatePublicCode(prefix),
     scratch_code: generateScratchCode(),
     label: labelPrefix ? `${labelPrefix} ${index + 1}` : null,
     code_type,
     template_id: code_type === 'locked' ? template_id || null : null,
+    assigned_email: normalizedAssignedEmail,
     created_by,
     activated: false,
     is_active: true,
   }))
-
-  if (normalizedAssignedEmail) {
-    for (const row of rows) {
-      row.assigned_email = normalizedAssignedEmail
-    }
-  }
 
   const { data, error } = await supabase
     .from('qr_codes')
@@ -446,6 +443,20 @@ export async function getPublishedArticles() {
 export async function activateQrCode(codeValue, scratch) {
   const normalizedCode = codeValue?.trim()
   const normalizedScratch = scratch?.trim().toUpperCase()
+
+  if (!normalizedCode) {
+    return {
+      data: null,
+      error: { message: 'QR code is required.' },
+    }
+  }
+
+  if (!normalizedScratch) {
+    return {
+      data: null,
+      error: { message: 'Scratch code is required.' },
+    }
+  }
 
   const { data, error } = await supabase.rpc('activate_qr_code', {
     p_code: normalizedCode,
