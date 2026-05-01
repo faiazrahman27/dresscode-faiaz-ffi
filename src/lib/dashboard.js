@@ -8,24 +8,28 @@ const LIMITS = {
   prefix: 12,
   code: 80,
   scratchCode: 14,
+  accentColor: 20,
   articleTitle: 180,
   articleSlug: 140,
   articleExcerpt: 500,
   articleBody: 20000,
   articleCategory: 80,
+  articleTag: 80,
   articleDate: 40,
+  articleReadTime: 80,
   url: 2048,
   pageDataJson: 250000,
   bulkQrCount: 500,
 }
 
 const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const QR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,79}$/
 const SCRATCH_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
 const SAFE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/
 
 const VALID_ROLES = new Set(['user', 'journalist', 'admin'])
 const VALID_CODE_TYPES = new Set(['open', 'locked'])
@@ -40,6 +44,7 @@ const PROFILE_UPDATE_FIELDS = new Set([
   'organization',
   'title',
   'username',
+  'accent_color',
 ])
 
 const TEMPLATE_UPDATE_FIELDS = new Set(['name', 'page_data'])
@@ -66,11 +71,13 @@ const ARTICLE_FIELDS = new Set([
   'image_url',
   'featured_image',
   'category',
+  'tag',
   'date',
   'published',
   'author_id',
   'source_url',
   'reading_time',
+  'read_time',
   'seo_title',
   'seo_description',
 ])
@@ -125,6 +132,20 @@ function sanitizeUrl(value) {
 function hasUnsafeProtocol(value) {
   const normalized = String(value || '').trim().toLowerCase()
   return /^(javascript|data|vbscript):/.test(normalized)
+}
+
+function sanitizeHexColor(value, fallback = '#5ECFCF') {
+  const safeValue = sanitizeSingleLineText(value, LIMITS.accentColor)
+
+  if (!safeValue) {
+    return { value: fallback, error: '' }
+  }
+
+  if (!HEX_COLOR_PATTERN.test(safeValue)) {
+    return { value: fallback, error: 'Accent color must be a valid hex color like #5ECFCF.' }
+  }
+
+  return { value: safeValue, error: '' }
 }
 
 function sanitizeNullableUuid(value, fieldName) {
@@ -298,6 +319,12 @@ function sanitizeProfileUpdates(updates) {
     payload.website = website || null
   }
 
+  if (Object.prototype.hasOwnProperty.call(updates, 'accent_color')) {
+    const { value, error } = sanitizeHexColor(updates.accent_color)
+    if (error) return { payload: null, error }
+    payload.accent_color = value
+  }
+
   for (const field of ['location', 'company', 'organization', 'title', 'username']) {
     if (Object.prototype.hasOwnProperty.call(updates, field)) {
       payload[field] = sanitizeSingleLineText(updates[field], LIMITS.name) || null
@@ -451,6 +478,10 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
     payload.category = sanitizeSingleLineText(input.category, LIMITS.articleCategory) || null
   }
 
+  if (Object.prototype.hasOwnProperty.call(input, 'tag')) {
+    payload.tag = sanitizeSingleLineText(input.tag, LIMITS.articleTag) || null
+  }
+
   if (Object.prototype.hasOwnProperty.call(input, 'date')) {
     payload.date = sanitizeSingleLineText(input.date, LIMITS.articleDate) || null
   }
@@ -467,6 +498,10 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'reading_time')) {
     payload.reading_time = sanitizeInteger(input.reading_time, 0, 999, 0)
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'read_time')) {
+    payload.read_time = sanitizeSingleLineText(input.read_time, LIMITS.articleReadTime) || null
   }
 
   if (Object.prototype.hasOwnProperty.call(input, 'seo_title')) {
