@@ -89,7 +89,10 @@ export async function getQrCodeByCode(code) {
 
     return {
       data: null,
-      error: { message, status: data?.status },
+      error: {
+        message,
+        status: data?.status,
+      },
     }
   }
 
@@ -100,6 +103,13 @@ export async function getQrCodeByCode(code) {
 }
 
 export async function getCodeProfileByQrId(qrCodeId) {
+  if (!qrCodeId) {
+    return {
+      data: null,
+      error: { message: 'QR code ID is required.' },
+    }
+  }
+
   const { data, error } = await supabase
     .from('code_profiles')
     .select('*')
@@ -110,6 +120,13 @@ export async function getCodeProfileByQrId(qrCodeId) {
 }
 
 export async function getTemplateById(templateId) {
+  if (!templateId) {
+    return {
+      data: null,
+      error: { message: 'Template ID is required.' },
+    }
+  }
+
   const { data, error } = await supabase
     .from('content_templates')
     .select('*')
@@ -187,6 +204,9 @@ export async function insertScan(qrCodeId) {
 
   const device = getSafeDeviceString()
 
+  // Security hardening:
+  // Public scan writes go through the controlled RPC instead of direct table insert.
+  // The RPC handles validation/rate-limit logic server-side and inserts only allowed fields.
   const { data, error } = await supabase.rpc('record_public_scan', {
     p_qr_code_id: qrCodeId,
     p_device: device,
