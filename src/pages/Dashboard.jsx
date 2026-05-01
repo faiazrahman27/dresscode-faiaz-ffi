@@ -99,7 +99,7 @@ export default function Dashboard() {
 
     const [{ data: myCodes, error: codesError }, { count, error: scansError }] =
       await Promise.all([
-        getMyQrCodes(user.id),
+        getMyQrCodes(user.id, user.email),
         getScanCountForUserCodes(user.id),
       ])
 
@@ -244,9 +244,16 @@ export default function Dashboard() {
     }
   }
 
-  const assignedOnlyCodes = codes.filter(
-    (code) => code.assigned_to === user?.id && !code.activated
-  )
+  const normalizedUserEmail = user?.email?.trim().toLowerCase() || ''
+
+  const assignedOnlyCodes = codes.filter((code) => {
+    const assignedEmail = code.assigned_email?.trim().toLowerCase() || ''
+    const assignedToUserId = code.assigned_to === user?.id
+    const assignedToUserEmail =
+      Boolean(assignedEmail) && assignedEmail === normalizedUserEmail
+
+    return (assignedToUserId || assignedToUserEmail) && !code.activated
+  })
 
   const activatedOpenCodes = codes.filter(
     (code) =>
@@ -447,6 +454,11 @@ export default function Dashboard() {
           }
           onPendingDeleted={(deletedId) =>
             setPendingAssignments((prev) => prev.filter((item) => item.id !== deletedId))
+          }
+          onQrUpdated={(updatedQr) =>
+            setAllQrCodes((prev) =>
+              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item))
+            )
           }
         />
       )

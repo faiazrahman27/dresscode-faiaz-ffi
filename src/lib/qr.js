@@ -32,29 +32,6 @@ export async function getTemplateById(templateId) {
   return { data, error }
 }
 
-function buildDefaultPageData() {
-  return {
-    version: 1,
-    settings: {
-      accentColor: '#5ECFCF',
-      background: {
-        type: 'color',
-        value: '#0A1F1F',
-        gradientFrom: '#0A1F1F',
-        gradientTo: '#123B3B',
-        gradientDirection: '135deg',
-      },
-      redirectUrl: '',
-    },
-    navbar: {
-      enabled: false,
-      brandText: '',
-      links: [],
-    },
-    sections: [],
-  }
-}
-
 export async function activateQrCode(codeValue, scratchCode) {
   const normalizedCode = codeValue?.trim()
   const normalizedScratch = scratchCode?.trim().toUpperCase()

@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { getPublicProfileUrl } from '../lib/site'
 
+function normalizeEmail(email) {
+  return email?.trim().toLowerCase() || ''
+}
+
 export default function MyCodesPanel({ codes, user }) {
   const [copiedCode, setCopiedCode] = useState('')
   const [qrImages, setQrImages] = useState({})
@@ -175,10 +179,15 @@ export default function MyCodesPanel({ codes, user }) {
       {codes.map((code) => {
         const publicUrl = getPublicProfileUrl(code.code)
         const qrImage = qrImages[code.id]
+        const normalizedUserEmail = normalizeEmail(user?.email)
+        const assignedEmail = normalizeEmail(code.assigned_email)
 
         const isActivatedByCurrentUser =
           Boolean(code.activated) && code.activated_by === user?.id
-        const isAssignedOnly = code.assigned_to === user?.id && !code.activated
+        const isAssignedOnly =
+          !code.activated &&
+          (code.assigned_to === user?.id ||
+            (Boolean(assignedEmail) && assignedEmail === normalizedUserEmail))
         const isLocked = code.code_type === 'locked'
         const isOpen = code.code_type === 'open'
 
@@ -227,6 +236,11 @@ export default function MyCodesPanel({ codes, user }) {
 
                   <div className="mb-2 break-all text-sm text-white/55">{code.code}</div>
                   <div className="mb-3 break-all text-sm text-white/65">{publicUrl}</div>
+                  {assignedEmail ? (
+                    <div className="mb-3 break-all text-sm text-white/55">
+                      Reserved for {assignedEmail}
+                    </div>
+                  ) : null}
 
                   {isOpen ? (
                     <div className="rounded-[16px] border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-white/80">

@@ -6,6 +6,7 @@ import {
   deleteQrCode,
   generatePublicCode,
   generateScratchCode,
+  normalizeAssignedEmail,
   updateQrCode,
 } from '../lib/dashboard'
 
@@ -28,6 +29,7 @@ function exportCsv(rows) {
     'Created At',
     'URL',
     'Template ID',
+    'Assigned Email',
   ]
 
   const body = rows.map((row) => [
@@ -39,6 +41,7 @@ function exportCsv(rows) {
     row.created_at || '',
     `${window.location.origin}/p/${row.code}`,
     row.template_id || '',
+    row.assigned_email || '',
   ])
 
   const csv = [headers, ...body]
@@ -79,6 +82,7 @@ export default function AdminQrCodesPanel({
     label: '',
     code_type: 'open',
     template_id: '',
+    assigned_email: '',
     prefix: 'DC',
   })
   const [bulkForm, setBulkForm] = useState({
@@ -87,6 +91,7 @@ export default function AdminQrCodesPanel({
     labelPrefix: '',
     code_type: 'open',
     template_id: '',
+    assigned_email: '',
   })
   const [selectedQrId, setSelectedQrId] = useState('')
   const [search, setSearch] = useState('')
@@ -129,6 +134,7 @@ export default function AdminQrCodesPanel({
           row.label,
           row.code_type,
           row.template_id,
+          row.assigned_email,
         ]
           .filter(Boolean)
           .join(' ')
@@ -219,6 +225,7 @@ export default function AdminQrCodesPanel({
       label: form.label.trim(),
       code_type: form.code_type,
       template_id: form.template_id || null,
+      assigned_email: normalizeAssignedEmail(form.assigned_email),
       created_by: currentUserId,
     })
 
@@ -247,6 +254,7 @@ export default function AdminQrCodesPanel({
       label: '',
       code_type: 'open',
       template_id: '',
+      assigned_email: '',
     }))
   }
 
@@ -275,6 +283,7 @@ export default function AdminQrCodesPanel({
       labelPrefix: bulkForm.labelPrefix.trim(),
       code_type: bulkForm.code_type,
       template_id: bulkForm.template_id || null,
+      assigned_email: normalizeAssignedEmail(bulkForm.assigned_email),
       created_by: currentUserId,
     })
 
@@ -295,6 +304,10 @@ export default function AdminQrCodesPanel({
     }
 
     setFeedback(`${data?.length || 0} QR codes created successfully.`)
+    setBulkForm((prev) => ({
+      ...prev,
+      assigned_email: '',
+    }))
   }
 
   async function handleTemplateAssign(qrCodeId, templateId) {
@@ -474,6 +487,22 @@ export default function AdminQrCodesPanel({
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-medium">Assigned email</label>
+                <input
+                  type="email"
+                  className="field"
+                  value={form.assigned_email}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, assigned_email: e.target.value }))
+                  }
+                  placeholder="futurecustomer@example.com"
+                />
+                <div className="mt-2 text-sm text-white/50">
+                  Only this email can activate this QR code. Leave empty for an unassigned code.
+                </div>
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium">Code Type</label>
                 <select
                   className="field"
@@ -559,6 +588,23 @@ export default function AdminQrCodesPanel({
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-medium">Assigned email</label>
+                <input
+                  type="email"
+                  className="field"
+                  value={bulkForm.assigned_email}
+                  onChange={(e) =>
+                    setBulkForm((prev) => ({ ...prev, assigned_email: e.target.value }))
+                  }
+                  placeholder="futurecustomer@example.com"
+                />
+                <div className="mt-2 text-sm text-white/50">
+                  All generated QR codes in this batch will be reserved for this email.
+                  Leave empty for unassigned codes.
+                </div>
+              </div>
+
+              <div>
                 <label className="mb-2 block text-sm font-medium">Code Type</label>
                 <select
                   className="field"
@@ -621,6 +667,11 @@ export default function AdminQrCodesPanel({
                     <div className="font-semibold break-words">{item.label || item.code}</div>
                     <div className="break-all text-white/55">{item.code}</div>
                     <div className="break-all text-white/55">Scratch: {item.scratch_code}</div>
+                    {item.assigned_email ? (
+                      <div className="break-all text-white/55">
+                        Reserved: {item.assigned_email}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -653,6 +704,9 @@ export default function AdminQrCodesPanel({
                   </div>
                   <div>
                     <strong>Status:</strong> {selectedQr.activated ? 'Redeemed' : 'Pending'}
+                  </div>
+                  <div className="break-all">
+                    <strong>Assigned Email:</strong> {selectedQr.assigned_email || 'None'}
                   </div>
                   <div>
                     <strong>Created:</strong> {formatDate(selectedQr.created_at)}
@@ -689,7 +743,7 @@ export default function AdminQrCodesPanel({
               className="field"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by code, scratch, label, type, template..."
+              placeholder="Search by code, scratch, label, type, template, email..."
             />
 
             <div className="flex flex-wrap gap-2">
@@ -813,6 +867,7 @@ export default function AdminQrCodesPanel({
                           <span className="badge">
                             {item.activated ? 'Redeemed' : 'Pending'}
                           </span>
+                          {item.assigned_email ? <span className="badge">Email reserved</span> : null}
                         </div>
 
                         <div className="mt-4 grid gap-1 text-sm text-white/60">
@@ -825,6 +880,11 @@ export default function AdminQrCodesPanel({
                           <div>
                             <strong>Created:</strong> {formatDate(item.created_at)}
                           </div>
+                          {item.assigned_email ? (
+                            <div className="break-all">
+                              <strong>Reserved:</strong> {item.assigned_email}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -890,6 +950,9 @@ export default function AdminQrCodesPanel({
                           </div>
                           <div>
                             <strong>Is Active:</strong> {String(item.is_active)}
+                          </div>
+                          <div className="break-all">
+                            <strong>Assigned Email:</strong> {item.assigned_email || 'None'}
                           </div>
                           <div className="break-all">
                             <strong>Public URL:</strong> {window.location.origin}/p/{item.code}

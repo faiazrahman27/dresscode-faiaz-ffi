@@ -38,6 +38,10 @@ function GlitterField({ count = 16 }) {
   )
 }
 
+function normalizeEmail(email) {
+  return email?.trim().toLowerCase() || ''
+}
+
 export default function Activate() {
   const { code } = useParams()
   const navigate = useNavigate()
@@ -109,6 +113,16 @@ export default function Activate() {
         replace: true,
         state: { from: location },
       })
+      return
+    }
+
+    if (assignedToDifferentUser) {
+      setError('This QR code is assigned to another account.')
+      return
+    }
+
+    if (assignedToDifferentEmail) {
+      setError('This QR code is assigned to another email. Please sign in with the email used for this assignment.')
       return
     }
 
@@ -197,13 +211,25 @@ export default function Activate() {
     )
   }
 
+  const currentUserEmail = normalizeEmail(user?.email)
+  const assignedEmail = normalizeEmail(qrCode?.assigned_email)
+  const hasUserAssignment = Boolean(qrCode?.assigned_to)
+  const hasEmailAssignment = Boolean(assignedEmail)
+
   const assignedToCurrentUser =
-    user && qrCode?.assigned_to && qrCode.assigned_to === user.id
+    Boolean(user) && hasUserAssignment && qrCode.assigned_to === user.id
 
   const assignedToDifferentUser =
-    user && qrCode?.assigned_to && qrCode.assigned_to !== user.id
+    Boolean(user) && hasUserAssignment && qrCode.assigned_to !== user.id
 
-  const unassignedCode = !qrCode?.assigned_to
+  const assignedToCurrentEmail =
+    Boolean(user) && hasEmailAssignment && assignedEmail === currentUserEmail
+
+  const assignedToDifferentEmail =
+    Boolean(user) && hasEmailAssignment && assignedEmail !== currentUserEmail
+
+  const unassignedCode = !hasUserAssignment && !hasEmailAssignment
+  const activationBlocked = assignedToDifferentUser || assignedToDifferentEmail
   const isOpenCode = qrCode?.code_type === 'open'
   const isLockedCode = qrCode?.code_type === 'locked'
 
@@ -300,15 +326,39 @@ export default function Activate() {
                 </div>
               ) : null}
 
+              {hasUserAssignment && !user ? (
+                <div className="activate-state-card activate-state-card-cyan">
+                  This QR code is reserved for a specific account. Sign in with the assigned account to continue.
+                </div>
+              ) : null}
+
+              {hasEmailAssignment && !user ? (
+                <div className="activate-state-card activate-state-card-cyan">
+                  This QR code is reserved for a specific email. Sign in or create an account with that email to activate it.
+                </div>
+              ) : null}
+
               {assignedToCurrentUser ? (
                 <div className="activate-state-card activate-state-card-emerald">
                   This QR code is already assigned to your account. Enter the scratch code to activate it.
                 </div>
               ) : null}
 
+              {assignedToCurrentEmail ? (
+                <div className="activate-state-card activate-state-card-emerald">
+                  This QR code is reserved for your email. Enter the scratch code to activate it.
+                </div>
+              ) : null}
+
               {assignedToDifferentUser ? (
                 <div className="activate-state-card activate-state-card-red">
                   This QR code is assigned to another user and cannot be activated from this account.
+                </div>
+              ) : null}
+
+              {assignedToDifferentEmail ? (
+                <div className="activate-state-card activate-state-card-red">
+                  This QR code is assigned to another email. Please sign in with the email used for this assignment.
                 </div>
               ) : null}
             </div>
@@ -338,7 +388,9 @@ export default function Activate() {
                 </div>
 
                 <p className="muted mb-8">
-                  Once you sign in, you can activate this item and connect it to your account.
+                  {hasEmailAssignment
+                    ? 'Once you sign in with the assigned email, you can activate this item and connect it to your account.'
+                    : 'Once you sign in, you can activate this item and connect it to your account.'}
                 </p>
 
                 <Link
@@ -383,13 +435,13 @@ export default function Activate() {
                       onChange={(e) => setFormScratchCode(e.target.value.toUpperCase())}
                       placeholder="XXXX-XXXX-XXXX"
                       className="field"
-                      disabled={assignedToDifferentUser}
+                      disabled={activationBlocked}
                     />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={submitting || assignedToDifferentUser}
+                    disabled={submitting || activationBlocked}
                     className="btn btn-primary glow-btn w-full"
                   >
                     {submitting ? 'Activating...' : 'Activate Code'}

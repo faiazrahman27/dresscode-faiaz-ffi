@@ -1,14 +1,50 @@
 import { supabase } from './supabase'
 import { defaultPageData } from './pageBuilder'
 
-export async function getMyQrCodes(userId) {
-  const { data, error } = await supabase
-    .from('qr_codes')
-    .select('*')
-    .or(`assigned_to.eq.${userId},activated_by.eq.${userId}`)
-    .order('created_at', { ascending: false })
+export function normalizeAssignedEmail(email) {
+  const normalized = email?.trim().toLowerCase()
+  return normalized || null
+}
 
-  return { data, error }
+export async function getMyQrCodes(userId, email = '') {
+  const normalizedEmail = normalizeAssignedEmail(email)
+  const rowsById = new Map()
+
+  if (userId) {
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .or(`assigned_to.eq.${userId},activated_by.eq.${userId}`)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    for (const row of data || []) {
+      rowsById.set(row.id, row)
+    }
+  }
+
+  if (normalizedEmail) {
+    const { data, error } = await supabase
+      .from('qr_codes')
+      .select('*')
+      .eq('assigned_email', normalizedEmail)
+
+    if (error) {
+      return { data: null, error }
+    }
+
+    for (const row of data || []) {
+      rowsById.set(row.id, row)
+    }
+  }
+
+  const data = Array.from(rowsById.values()).sort(
+    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+  )
+
+  return { data, error: null }
 }
 
 export async function getScanCountForUserCodes(userId) {
@@ -170,10 +206,12 @@ export async function createPendingAssignment({
   qr_code_id = null,
   created_by,
 }) {
+  const normalizedEmail = normalizeAssignedEmail(email)
+
   const { data, error } = await supabase
     .from('pending_assignments')
     .insert({
-      email,
+      email: normalizedEmail,
       role,
       qr_code_id,
       created_by,
@@ -274,8 +312,10 @@ export async function createQrCode({
   label,
   code_type,
   template_id,
+  assigned_email,
   created_by,
 }) {
+  const normalizedAssignedEmail = normalizeAssignedEmail(assigned_email)
   const payload = {
     code,
     scratch_code,
@@ -285,6 +325,10 @@ export async function createQrCode({
     created_by,
     activated: false,
     is_active: true,
+  }
+
+  if (normalizedAssignedEmail) {
+    payload.assigned_email = normalizedAssignedEmail
   }
 
   const { data, error } = await supabase
@@ -302,9 +346,11 @@ export async function createBulkQrCodes({
   labelPrefix,
   code_type,
   template_id,
+  assigned_email,
   created_by,
 }) {
   const safeCount = Math.max(1, Math.min(500, Number(count) || 1))
+  const normalizedAssignedEmail = normalizeAssignedEmail(assigned_email)
   const rows = Array.from({ length: safeCount }, (_, index) => ({
     code: generatePublicCode(prefix),
     scratch_code: generateScratchCode(),
@@ -316,6 +362,12 @@ export async function createBulkQrCodes({
     is_active: true,
   }))
 
+  if (normalizedAssignedEmail) {
+    for (const row of rows) {
+      row.assigned_email = normalizedAssignedEmail
+    }
+  }
+
   const { data, error } = await supabase
     .from('qr_codes')
     .insert(rows)
@@ -325,9 +377,15 @@ export async function createBulkQrCodes({
 }
 
 export async function updateQrCode(qrCodeId, updates) {
+  const payload = { ...updates }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'assigned_email')) {
+    payload.assigned_email = normalizeAssignedEmail(payload.assigned_email)
+  }
+
   const { data, error } = await supabase
     .from('qr_codes')
-    .update(updates)
+    .update(payload)
     .eq('id', qrCodeId)
     .select()
     .single()
@@ -385,35 +443,25 @@ export async function getPublishedArticles() {
   return { data, error }
 }
 
-export async function activateQrCode(codeValue, scratch, userId) {
-  const { data: qr, error } = await supabase
-    .from('qr_codes')
-    .select('*')
-    .eq('code', codeValue)
-    .single()
+export async function activateQrCode(codeValue, scratch) {
+  const normalizedCode = codeValue?.trim()
+  const normalizedScratch = scratch?.trim().toUpperCase()
 
-  if (error || !qr) {
-    return { error: { message: 'Invalid code' } }
+  const { data, error } = await supabase.rpc('activate_qr_code', {
+    p_code: normalizedCode,
+    p_scratch_code: normalizedScratch,
+  })
+
+  if (error) {
+    return { data: null, error }
   }
 
-  if (qr.activated) {
-    return { error: { message: 'Already activated' } }
+  if (!data?.success) {
+    return {
+      data: null,
+      error: { message: data?.message || 'Activation failed.' },
+    }
   }
 
-  if (qr.scratch_code !== scratch) {
-    return { error: { message: 'Invalid scratch code' } }
-  }
-
-  const { data, error: updateError } = await supabase
-    .from('qr_codes')
-    .update({
-      activated: true,
-      activated_by: userId,
-      activated_at: new Date().toISOString(),
-    })
-    .eq('id', qr.id)
-    .select()
-    .single()
-
-  return { data, error: updateError }
+  return { data, error: null }
 }

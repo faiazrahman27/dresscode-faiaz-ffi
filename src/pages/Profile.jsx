@@ -293,6 +293,14 @@ export default function Profile() {
         return
       }
 
+      if (!qr.activated) {
+        navigate(`/activate/${code}`, {
+          replace: true,
+          state: { from: location },
+        })
+        return
+      }
+
       const isLockedTemplateCode =
         qr.code_type === 'locked' && Boolean(qr.template_id)
 
@@ -325,14 +333,6 @@ export default function Profile() {
         await insertScan(qr.id)
         setState('active')
         setLoading(false)
-        return
-      }
-
-      if (!qr.activated) {
-        navigate(`/activate/${code}`, {
-          replace: true,
-          state: { from: location },
-        })
         return
       }
 

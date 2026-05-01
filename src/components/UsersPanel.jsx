@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import {
   createPendingAssignment,
   deletePendingAssignment,
+  normalizeAssignedEmail,
+  updateQrCode,
   updateUserRole,
 } from '../lib/dashboard'
 
@@ -17,6 +19,7 @@ export default function UsersPanel({
   onUserUpdated,
   onPendingCreated,
   onPendingDeleted,
+  onQrUpdated,
 }) {
   const [search, setSearch] = useState('')
   const [assignForm, setAssignForm] = useState({
@@ -62,7 +65,8 @@ export default function UsersPanel({
     setError('')
     setFeedback('')
 
-    const email = assignForm.email.trim().toLowerCase()
+    const email = normalizeAssignedEmail(assignForm.email)
+    const selectedQrCodeId = assignForm.qr_code_id || null
 
     if (!email) {
       setError('Email is required.')
@@ -74,9 +78,22 @@ export default function UsersPanel({
     const { data, error } = await createPendingAssignment({
       email,
       role: assignForm.role,
-      qr_code_id: assignForm.qr_code_id || null,
+      qr_code_id: selectedQrCodeId,
       created_by: currentUserId,
     })
+
+    let reservedQr = null
+    let reservationError = null
+
+    if (!error && selectedQrCodeId) {
+      const { data: updatedQr, error: updateError } = await updateQrCode(
+        selectedQrCodeId,
+        { assigned_email: email }
+      )
+
+      reservedQr = updatedQr
+      reservationError = updateError
+    }
 
     setSaving(false)
 
@@ -86,7 +103,18 @@ export default function UsersPanel({
     }
 
     onPendingCreated(data)
-    setFeedback('Pending assignment created successfully.')
+
+    if (reservedQr && onQrUpdated) {
+      onQrUpdated(reservedQr)
+    }
+
+    if (reservationError) {
+      setError('Pending assignment was created, but the QR code could not be reserved for this email.')
+    } else if (selectedQrCodeId) {
+      setFeedback('Pending assignment created and QR code reserved for this email.')
+    } else {
+      setFeedback('Pending assignment created successfully.')
+    }
 
     setAssignForm({
       email: '',

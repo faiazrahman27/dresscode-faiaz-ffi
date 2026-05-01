@@ -1,0 +1,9 @@
+alter table public.profiles enable row level security;
+alter table public.qr_codes enable row level security;
+alter table public.code_profiles enable row level security;
+alter table public.articles enable row level security;
+alter table public.scans enable row level security;
+alter table public.newsletter enable row level security;
+alter table public.contacts enable row level security;
+alter table public.pending_assignments enable row level security;
+alter table public.content_templates enable row level security;
