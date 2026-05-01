@@ -7,160 +7,78 @@ export function normalizeAssignedEmail(email) {
 }
 
 export async function getMyQrCodes(userId, email = '') {
-  const normalizedEmail = normalizeAssignedEmail(email)
-  const rowsById = new Map()
-
-  if (userId) {
-    const { data, error } = await supabase
-      .from('qr_codes')
-      .select('*')
-      .or(`assigned_to.eq.${userId},activated_by.eq.${userId}`)
-
-    if (error) {
-      return { data: null, error }
-    }
-
-    for (const row of data || []) {
-      rowsById.set(row.id, row)
-    }
+  if (!userId) {
+    return { data: [], error: null }
   }
 
-  // Authenticated dashboard-only lookup for future-customer reservations.
-  // Public profile/activation pages must not read assigned_email directly;
-  // they use safe RPCs from src/lib/qr.js instead.
-  if (normalizedEmail) {
-    const { data, error } = await supabase
-      .from('qr_codes')
-      .select('*')
-      .eq('assigned_email', normalizedEmail)
+  // Safe authenticated RPC.
+  // Does not return scratch_code or assigned_email.
+  // It returns safe booleans like assigned_to_current_email instead.
+  const { data, error } = await supabase.rpc('get_my_qr_codes')
 
-    if (error) {
-      return { data: null, error }
-    }
-
-    for (const row of data || []) {
-      rowsById.set(row.id, row)
-    }
+  if (error) {
+    return { data: null, error }
   }
 
-  const data = Array.from(rowsById.values()).sort(
+  const rows = Array.isArray(data) ? data : []
+
+  const sorted = rows.sort(
     (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0),
   )
 
-  return { data, error: null }
+  return { data: sorted, error: null }
 }
 
 export async function getScanCountForUserCodes(userId) {
-  const { data: codes, error: codesError } = await supabase
-    .from('qr_codes')
-    .select('id')
-    .eq('activated_by', userId)
-
-  if (codesError) {
-    return { count: 0, error: codesError }
-  }
-
-  const ids = (codes || []).map((item) => item.id)
-
-  if (!ids.length) {
+  if (!userId) {
     return { count: 0, error: null }
   }
 
-  const { count, error } = await supabase
-    .from('scans')
-    .select('*', { count: 'exact', head: true })
-    .in('qr_code_id', ids)
+  const { data, error } = await supabase.rpc('get_my_scan_count')
 
-  return { count: count || 0, error }
+  if (error) {
+    return { count: 0, error }
+  }
+
+  return { count: Number(data) || 0, error: null }
 }
 
 export async function getRecentScansForUserCodes(userId, limit = 20) {
-  const { data: codes, error: codesError } = await supabase
-    .from('qr_codes')
-    .select('id, code, label')
-    .eq('activated_by', userId)
-
-  if (codesError) {
-    return { data: [], error: codesError }
-  }
-
-  const codeRows = codes || []
-  const ids = codeRows.map((item) => item.id)
-
-  if (!ids.length) {
+  if (!userId) {
     return { data: [], error: null }
   }
 
-  const codeMap = Object.fromEntries(
-    codeRows.map((item) => [
-      item.id,
-      {
-        code: item.code,
-        label: item.label,
-      },
-    ]),
-  )
+  const safeLimit = Math.max(1, Math.min(100, Number(limit) || 20))
 
-  const { data: scans, error } = await supabase
-    .from('scans')
-    .select('*')
-    .in('qr_code_id', ids)
-    .order('scanned_at', { ascending: false })
-    .limit(limit)
+  const { data, error } = await supabase.rpc('get_my_recent_scans', {
+    p_limit: safeLimit,
+  })
 
   if (error) {
     return { data: [], error }
   }
 
-  const enriched = (scans || []).map((scan) => ({
-    ...scan,
-    qr_code: codeMap[scan.qr_code_id] || null,
-  }))
-
-  return { data: enriched, error: null }
+  return {
+    data: Array.isArray(data) ? data : [],
+    error: null,
+  }
 }
 
 export async function getScanBreakdownForUserCodes(userId) {
-  const { data: codes, error: codesError } = await supabase
-    .from('qr_codes')
-    .select('id, code, label')
-    .eq('activated_by', userId)
-
-  if (codesError) {
-    return { data: [], error: codesError }
-  }
-
-  const codeRows = codes || []
-  const ids = codeRows.map((item) => item.id)
-
-  if (!ids.length) {
+  if (!userId) {
     return { data: [], error: null }
   }
 
-  const { data: scans, error } = await supabase
-    .from('scans')
-    .select('qr_code_id')
-    .in('qr_code_id', ids)
+  const { data, error } = await supabase.rpc('get_my_scan_breakdown')
 
   if (error) {
     return { data: [], error }
   }
 
-  const counts = {}
-  for (const scan of scans || []) {
-    counts[scan.qr_code_id] = (counts[scan.qr_code_id] || 0) + 1
+  return {
+    data: Array.isArray(data) ? data : [],
+    error: null,
   }
-
-  const breakdown = codeRows
-    .map((item) => ({
-      qr_code_id: item.id,
-      code: item.code,
-      label: item.label,
-      scans: counts[item.id] || 0,
-    }))
-    .sort((a, b) => b.scans - a.scans)
-
-  return { data: breakdown, error: null }
 }
 
 export async function updateMyProfile(userId, updates) {
@@ -226,15 +144,14 @@ export async function createPendingAssignment({
 }
 
 export async function deletePendingAssignment(id) {
-  const { error } = await supabase
-    .from('pending_assignments')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from('pending_assignments').delete().eq('id', id)
 
   return { error }
 }
 
 export async function getAllQrCodes() {
+  // Admin-only dashboard call.
+  // Admins intentionally need full QR rows for scratch-code export, CSV, and assignment management.
   const { data, error } = await supabase
     .from('qr_codes')
     .select('*')
@@ -365,10 +282,7 @@ export async function createBulkQrCodes({
     is_active: true,
   }))
 
-  const { data, error } = await supabase
-    .from('qr_codes')
-    .insert(rows)
-    .select()
+  const { data, error } = await supabase.from('qr_codes').insert(rows).select()
 
   return { data, error }
 }
@@ -391,10 +305,7 @@ export async function updateQrCode(qrCodeId, updates) {
 }
 
 export async function deleteQrCode(qrCodeId) {
-  const { error } = await supabase
-    .from('qr_codes')
-    .delete()
-    .eq('id', qrCodeId)
+  const { error } = await supabase.from('qr_codes').delete().eq('id', qrCodeId)
 
   return { error }
 }
@@ -421,10 +332,7 @@ export async function updateArticle(id, updates) {
 }
 
 export async function deleteArticle(id) {
-  const { error } = await supabase
-    .from('articles')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from('articles').delete().eq('id', id)
 
   return { error }
 }

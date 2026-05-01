@@ -167,25 +167,30 @@ export function resizeSectionColumns(section, newCount) {
 export async function getEditableCodeProfileByCode(code, userId) {
   const normalizedCode = code?.trim()
 
-  const { data: qrRows, error: qrError } = await supabase
-    .from('qr_codes')
-    .select(
-      [
-        'id',
-        'code',
-        'label',
-        'code_type',
-        'activated',
-        'activated_by',
-        'assigned_to',
-        'created_by',
-        'created_at',
-        'is_active',
-        'template_id',
-      ].join(', '),
-    )
-    .eq('code', normalizedCode)
-    .eq('activated_by', userId)
+  if (!normalizedCode) {
+    return {
+      qrCode: null,
+      codeProfile: null,
+      error: new Error('Code is required.'),
+    }
+  }
+
+  if (!userId) {
+    return {
+      qrCode: null,
+      codeProfile: null,
+      error: new Error('You need to sign in first.'),
+    }
+  }
+
+  // Safe authenticated RPC from migration 003.
+  // It does not expose scratch_code or assigned_email.
+  const { data: qrRows, error: qrError } = await supabase.rpc(
+    'get_editable_qr_by_code',
+    {
+      p_code: normalizedCode,
+    },
+  )
 
   if (qrError) {
     return {

@@ -3,10 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { getPublicProfileUrl } from '../lib/site'
 
-function normalizeEmail(email) {
-  return email?.trim().toLowerCase() || ''
-}
-
 export default function MyCodesPanel({ codes, user }) {
   const [copiedCode, setCopiedCode] = useState('')
   const [qrImages, setQrImages] = useState({})
@@ -163,15 +159,19 @@ export default function MyCodesPanel({ codes, user }) {
       {codes.map((code) => {
         const publicUrl = getPublicProfileUrl(code.code)
         const qrImage = qrImages[code.id]
-        const normalizedUserEmail = normalizeEmail(user?.email)
-        const assignedEmail = normalizeEmail(code.assigned_email)
 
         const isActivatedByCurrentUser =
           Boolean(code.activated) && code.activated_by === user?.id
 
-        const isAssignedToCurrentUser = code.assigned_to === user?.id
-        const isAssignedToCurrentEmail =
-          Boolean(assignedEmail) && assignedEmail === normalizedUserEmail
+        const isAssignedToCurrentUser =
+          Boolean(code.assigned_to_current_user) ||
+          (!code.activated && code.assigned_to === user?.id)
+
+        const isAssignedToCurrentEmail = Boolean(code.assigned_to_current_email)
+
+        const hasEmailAssignment = Boolean(code.has_email_assignment)
+        const hasUserAssignment =
+          Boolean(code.has_user_assignment) || Boolean(code.assigned_to)
 
         const isAssignedOnly =
           !code.activated && (isAssignedToCurrentUser || isAssignedToCurrentEmail)
@@ -239,6 +239,19 @@ export default function MyCodesPanel({ codes, user }) {
                       <div className="leading-7 text-white/70">
                         This code is reserved for your account. Activate it with the scratch
                         code from the physical item.
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {!isAssignedToCurrentEmail &&
+                  !isAssignedToCurrentUser &&
+                  !code.activated &&
+                  (hasEmailAssignment || hasUserAssignment) ? (
+                    <div className="mb-3 rounded-[16px] border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/80">
+                      <div className="mb-1 font-semibold text-white">Reserved code</div>
+                      <div className="leading-7 text-white/70">
+                        This code is reserved and must be activated from the assigned account
+                        or email.
                       </div>
                     </div>
                   ) : null}

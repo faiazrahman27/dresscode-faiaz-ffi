@@ -266,15 +266,13 @@ export default function Dashboard() {
     }
   }
 
-  const normalizedUserEmail = user?.email?.trim().toLowerCase() || ''
-
   const assignedOnlyCodes = codes.filter((code) => {
-    const assignedEmail = code.assigned_email?.trim().toLowerCase() || ''
-    const assignedToUserId = code.assigned_to === user?.id
-    const assignedToUserEmail =
-      Boolean(assignedEmail) && assignedEmail === normalizedUserEmail
+    const assignedToCurrentUser =
+      Boolean(code.assigned_to_current_user) || code.assigned_to === user?.id
 
-    return (assignedToUserId || assignedToUserEmail) && !code.activated
+    const assignedToCurrentEmail = Boolean(code.assigned_to_current_email)
+
+    return !code.activated && (assignedToCurrentUser || assignedToCurrentEmail)
   })
 
   const activatedOpenCodes = codes.filter(
