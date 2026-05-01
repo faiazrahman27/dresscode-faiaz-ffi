@@ -2311,3 +2311,44 @@ button:disabled,
     font-size: 0.9rem;
   }
 }
+
+/* Navbar hamburger visibility fix
+   Desktop full nav: hamburger hidden.
+   Narrow desktop/tablet/mobile: hamburger visible and full nav hidden.
+*/
+
+.navbar-toggle {
+  display: none !important;
+}
+
+@media (min-width: 1181px) {
+  .navbar-links {
+    display: flex !important;
+  }
+
+  .navbar-actions {
+    display: flex !important;
+  }
+
+  .navbar-toggle {
+    display: none !important;
+  }
+
+  .navbar-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .navbar-links {
+    display: none !important;
+  }
+
+  .navbar-actions {
+    display: none !important;
+  }
+
+  .navbar-toggle {
+    display: inline-flex !important;
+  }
+}
