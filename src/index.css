@@ -2101,3 +2101,213 @@ button:disabled,
     animation: none !important;
   }
 }
+
+
+/* Navbar overflow fix
+   Added after existing CSS so it safely overrides only navbar layout.
+   Purpose:
+   - prevent desktop nav/action collision
+   - keep text aligned
+   - switch to mobile hamburger earlier on medium screens
+   - keep brand/action buttons from crushing the center nav
+*/
+
+.site-navbar .container {
+  width: min(1440px, calc(100% - 28px));
+}
+
+.navbar-inner {
+  min-height: 74px;
+  gap: 12px;
+}
+
+.navbar-brand {
+  flex: 0 0 auto;
+  min-width: 178px;
+  max-width: 220px;
+}
+
+.navbar-brand-mark {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+}
+
+.navbar-brand > div:last-child {
+  min-width: 0;
+}
+
+.navbar-brand-title {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-brand-subtitle {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-links {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 720px;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px;
+}
+
+.navbar-link {
+  min-height: 40px;
+  padding: 0 11px;
+  font-size: 0.86rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.navbar-link span {
+  display: block;
+  white-space: nowrap;
+}
+
+.navbar-actions {
+  flex: 0 0 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.navbar-btn {
+  min-height: 42px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Logged-in desktop has more buttons, so compress slightly */
+.navbar-actions .btn-ghost.navbar-btn,
+.navbar-actions .btn-secondary.navbar-btn {
+  padding-inline: 15px;
+}
+
+/* Prevent weird wrapping/collision before hamburger mode */
+@media (max-width: 1280px) {
+  .site-navbar .container {
+    width: min(1440px, calc(100% - 20px));
+  }
+
+  .navbar-inner {
+    gap: 10px;
+  }
+
+  .navbar-brand {
+    min-width: 150px;
+    max-width: 180px;
+    gap: 10px;
+  }
+
+  .navbar-brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 15px;
+  }
+
+  .navbar-brand-title {
+    max-width: 118px;
+    font-size: 0.98rem;
+  }
+
+  .navbar-brand-subtitle {
+    max-width: 118px;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+  }
+
+  .navbar-links {
+    max-width: 650px;
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .navbar-link {
+    min-height: 38px;
+    padding: 0 9px;
+    font-size: 0.82rem;
+  }
+
+  .navbar-actions {
+    gap: 6px;
+  }
+
+  .navbar-btn {
+    min-height: 40px;
+    padding: 11px 13px;
+    font-size: 0.84rem;
+  }
+}
+
+/* At this width, desktop nav is too crowded.
+   Force hamburger earlier even though Tailwind lg would normally show desktop nav. */
+@media (max-width: 1180px) {
+  .navbar-links {
+    display: none !important;
+  }
+
+  .navbar-actions {
+    display: none !important;
+  }
+
+  .navbar-toggle {
+    display: inline-flex !important;
+  }
+
+  .navbar-brand {
+    max-width: calc(100% - 64px);
+  }
+
+  .navbar-brand-title,
+  .navbar-brand-subtitle {
+    max-width: 220px;
+  }
+}
+
+/* Larger desktop can breathe normally */
+@media (min-width: 1440px) {
+  .navbar-inner {
+    gap: 18px;
+  }
+
+  .navbar-brand {
+    min-width: 220px;
+    max-width: 260px;
+  }
+
+  .navbar-brand-title,
+  .navbar-brand-subtitle {
+    max-width: 180px;
+  }
+
+  .navbar-links {
+    max-width: 820px;
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .navbar-link {
+    padding: 0 15px;
+    font-size: 0.9rem;
+  }
+
+  .navbar-actions {
+    gap: 10px;
+  }
+
+  .navbar-btn {
+    padding: 13px 18px;
+    font-size: 0.9rem;
+  }
+}
