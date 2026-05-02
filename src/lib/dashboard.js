@@ -15,6 +15,11 @@ const LIMITS = {
   articleTag: 80,
   articleDate: 40,
   articleReadTime: 80,
+  shopProductName: 160,
+  shopProductSlug: 140,
+  shopProductCategory: 40,
+  shopProductDescription: 1200,
+  shopProductCurrency: 3,
   url: 2048,
   pageDataJson: 250000,
   bulkQrCount: 500,
@@ -27,9 +32,18 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const QR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{2,79}$/
 const SCRATCH_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
 const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/
+const SAFE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const CURRENCY_PATTERN = /^[A-Z]{3}$/
 
 const VALID_ROLES = new Set(['user', 'journalist', 'admin'])
 const VALID_CODE_TYPES = new Set(['open', 'locked'])
+const VALID_SHOP_CATEGORIES = new Set([
+  'qr_product',
+  'collectible',
+  'wearable',
+  'accessory',
+  'digital',
+])
 
 const PROFILE_UPDATE_FIELDS = new Set([
   'full_name',
@@ -67,6 +81,21 @@ const ARTICLE_FIELDS = new Set([
   'date',
   'read_time',
   'published',
+])
+
+const SHOP_PRODUCT_FIELDS = new Set([
+  'slug',
+  'name',
+  'category',
+  'description',
+  'image_url',
+  'price_cents',
+  'currency',
+  'code_type',
+  'template_id',
+  'qr_quantity',
+  'is_active',
+  'sort_order',
 ])
 
 function makeError(message) {
@@ -130,6 +159,23 @@ function sanitizeHexColor(value, fallback = '#5ECFCF') {
 
   if (!HEX_COLOR_PATTERN.test(safeValue)) {
     return { value: fallback, error: 'Accent color must be a valid hex color like #5ECFCF.' }
+  }
+
+  return { value: safeValue, error: '' }
+}
+
+function sanitizeSlug(value, fieldName = 'Slug') {
+  const safeValue = sanitizeSingleLineText(value, LIMITS.shopProductSlug).toLowerCase()
+
+  if (!safeValue) {
+    return { value: '', error: `${fieldName} is required.` }
+  }
+
+  if (!SAFE_SLUG_PATTERN.test(safeValue)) {
+    return {
+      value: '',
+      error: `${fieldName} can contain lowercase letters, numbers, and hyphens only.`,
+    }
   }
 
   return { value: safeValue, error: '' }
@@ -202,6 +248,29 @@ function sanitizeCodeType(codeType) {
   return { value: normalized, error: '' }
 }
 
+function sanitizeShopCategory(category) {
+  const normalized = String(category || '').trim().toLowerCase()
+
+  if (!VALID_SHOP_CATEGORIES.has(normalized)) {
+    return {
+      value: '',
+      error: 'Shop category must be qr_product, collectible, wearable, accessory, or digital.',
+    }
+  }
+
+  return { value: normalized, error: '' }
+}
+
+function sanitizeCurrency(currency) {
+  const normalized = sanitizeSingleLineText(currency || 'EUR', LIMITS.shopProductCurrency).toUpperCase()
+
+  if (!CURRENCY_PATTERN.test(normalized)) {
+    return { value: '', error: 'Currency must be a valid 3-letter code like EUR or USD.' }
+  }
+
+  return { value: normalized, error: '' }
+}
+
 function normalizeCode(code) {
   return String(code || '').trim().toUpperCase()
 }
@@ -241,6 +310,16 @@ function validateScratchCode(scratchCode) {
 function sanitizeBoolean(value, fallback = false) {
   if (typeof value === 'boolean') return value
   return fallback
+}
+
+function sanitizeInteger(value, min, max, fallback) {
+  const number = Number(value)
+
+  if (!Number.isInteger(number)) {
+    return fallback
+  }
+
+  return Math.max(min, Math.min(max, number))
 }
 
 function validatePageData(pageData) {
@@ -442,6 +521,123 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
     const { value, error } = sanitizeRequiredUuid(input.author_id, 'Author ID')
     if (error) return { payload: null, error }
     payload.author_id = value
+  }
+
+  return { payload, error: '' }
+}
+
+function sanitizeShopProductPayload(input, { partial = false } = {}) {
+  const unexpectedError = rejectUnexpectedFields(input, SHOP_PRODUCT_FIELDS, 'Shop product payload')
+  if (unexpectedError) return { payload: null, error: unexpectedError }
+
+  const payload = {}
+
+  if (Object.prototype.hasOwnProperty.call(input, 'slug')) {
+    const { value, error } = sanitizeSlug(input.slug, 'Product slug')
+    if (error) return { payload: null, error }
+    payload.slug = value
+  } else if (!partial) {
+    return { payload: null, error: 'Product slug is required.' }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'name')) {
+    const name = sanitizeSingleLineText(input.name, LIMITS.shopProductName)
+
+    if (name.length < 2) {
+      return { payload: null, error: 'Product name must be at least 2 characters.' }
+    }
+
+    payload.name = name
+  } else if (!partial) {
+    return { payload: null, error: 'Product name is required.' }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'category')) {
+    const { value, error } = sanitizeShopCategory(input.category)
+    if (error) return { payload: null, error }
+    payload.category = value
+  } else if (!partial) {
+    payload.category = 'qr_product'
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'description')) {
+    payload.description = sanitizeMultilineText(
+      input.description,
+      LIMITS.shopProductDescription,
+    ) || null
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'image_url')) {
+    const imageUrl = sanitizeUrl(input.image_url)
+
+    if (hasUnsafeProtocol(imageUrl)) {
+      return { payload: null, error: 'Product image URL uses an unsafe protocol.' }
+    }
+
+    payload.image_url = imageUrl || null
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'price_cents')) {
+    payload.price_cents = sanitizeInteger(input.price_cents, 0, 10000000, 0)
+  } else if (!partial) {
+    payload.price_cents = 0
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'currency')) {
+    const { value, error } = sanitizeCurrency(input.currency)
+    if (error) return { payload: null, error }
+    payload.currency = value
+  } else if (!partial) {
+    payload.currency = 'EUR'
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'code_type')) {
+    const { value, error } = sanitizeCodeType(input.code_type)
+    if (error) return { payload: null, error }
+    payload.code_type = value
+  } else if (!partial) {
+    payload.code_type = 'open'
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'template_id')) {
+    const { value, error } = sanitizeNullableUuid(input.template_id, 'Template ID')
+    if (error) return { payload: null, error }
+    payload.template_id = value
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'qr_quantity')) {
+    payload.qr_quantity = sanitizeInteger(input.qr_quantity, 1, 20, 1)
+  } else if (!partial) {
+    payload.qr_quantity = 1
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'is_active')) {
+    payload.is_active = sanitizeBoolean(input.is_active, true)
+  } else if (!partial) {
+    payload.is_active = true
+  }
+
+  if (Object.prototype.hasOwnProperty.call(input, 'sort_order')) {
+    payload.sort_order = sanitizeInteger(input.sort_order, 0, 100000, 0)
+  } else if (!partial) {
+    payload.sort_order = 0
+  }
+
+  if (payload.code_type === 'open') {
+    payload.template_id = null
+  }
+
+  if (!partial && payload.code_type === 'locked' && !payload.template_id) {
+    return { payload: null, error: 'Locked shop products must have a template assigned.' }
+  }
+
+  if (
+    partial &&
+    payload.code_type === 'locked' &&
+    Object.prototype.hasOwnProperty.call(input, 'template_id') &&
+    !payload.template_id
+  ) {
+    return { payload: null, error: 'Locked shop products must have a template assigned.' }
   }
 
   return { payload, error: '' }
@@ -710,6 +906,70 @@ export async function updateTemplate(templateId, updates) {
     .single()
 
   return { data, error }
+}
+
+export async function getAllShopProducts() {
+  const { data, error } = await supabase
+    .from('shop_products')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: false })
+
+  return { data, error }
+}
+
+export async function createShopProduct(input) {
+  const { payload, error: validationError } = sanitizeShopProductPayload(input)
+
+  if (validationError) {
+    return { data: null, error: makeError(validationError) }
+  }
+
+  const { data, error } = await supabase
+    .from('shop_products')
+    .insert(payload)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateShopProduct(productId, updates) {
+  const { value: safeProductId, error: productIdError } = sanitizeRequiredUuid(
+    productId,
+    'Shop product ID',
+  )
+  if (productIdError) return { data: null, error: makeError(productIdError) }
+
+  const { payload, error: validationError } = sanitizeShopProductPayload(updates, {
+    partial: true,
+  })
+  if (validationError) return { data: null, error: makeError(validationError) }
+
+  if (Object.keys(payload).length === 0) {
+    return { data: null, error: makeError('No valid shop product updates were provided.') }
+  }
+
+  const { data, error } = await supabase
+    .from('shop_products')
+    .update(payload)
+    .eq('id', safeProductId)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteShopProduct(productId) {
+  const { value: safeProductId, error: productIdError } = sanitizeRequiredUuid(
+    productId,
+    'Shop product ID',
+  )
+  if (productIdError) return { error: makeError(productIdError) }
+
+  const { error } = await supabase.from('shop_products').delete().eq('id', safeProductId)
+
+  return { error }
 }
 
 function randomChunk(length) {

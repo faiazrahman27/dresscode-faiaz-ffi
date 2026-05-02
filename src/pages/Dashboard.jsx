@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import DashboardSidebar from '../components/DashboardSidebar'
@@ -11,11 +10,13 @@ import AdminQrCodesPanel from '../components/AdminQrCodesPanel'
 import UsersPanel from '../components/UsersPanel'
 import JournalPanel from '../components/JournalPanel'
 import ScanAnalyticsPanel from '../components/ScanAnalyticsPanel'
+import ShopProductsPanel from '../components/ShopProductsPanel'
 import Navbar from '../components/Navbar'
 
 import {
   createTemplate,
   getAllQrCodes,
+  getAllShopProducts,
   getAllTemplates,
   getAllUsers,
   getMyArticles,
@@ -41,7 +42,7 @@ const heroStagger = {
   },
 }
 
-const ADMIN_ONLY_TABS = ['qr-codes', 'users', 'templates']
+const ADMIN_ONLY_TABS = ['qr-codes', 'shop-products', 'users', 'templates']
 
 function GlitterField({ count = 16 }) {
   return (
@@ -63,7 +64,6 @@ function GlitterField({ count = 16 }) {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate()
   const { user, profile, signOut, refreshProfile } = useAuth()
 
   const [activeTab, setActiveTab] = useState('my-codes')
@@ -74,11 +74,13 @@ export default function Dashboard() {
   const [allQrCodes, setAllQrCodes] = useState([])
   const [templates, setTemplates] = useState([])
   const [articles, setArticles] = useState([])
+  const [shopProducts, setShopProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [savingQr, setSavingQr] = useState(false)
   const [savingUsers, setSavingUsers] = useState(false)
+  const [savingShopProducts, setSavingShopProducts] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [error, setError] = useState('')
 
@@ -134,11 +136,13 @@ export default function Dashboard() {
         { data: loadedPending, error: pendingError },
         { data: qrCodes, error: allCodesError },
         { data: loadedTemplates, error: templatesError },
+        { data: loadedShopProducts, error: shopProductsError },
       ] = await Promise.all([
         getAllUsers(),
         getPendingAssignments(),
         getAllQrCodes(),
         getAllTemplates(),
+        getAllShopProducts(),
       ])
 
       if (usersError) {
@@ -164,11 +168,18 @@ export default function Dashboard() {
       } else {
         setTemplates(loadedTemplates || [])
       }
+
+      if (shopProductsError) {
+        setError(shopProductsError.message)
+      } else {
+        setShopProducts(loadedShopProducts || [])
+      }
     } else {
       setUsers([])
       setPendingAssignments([])
       setAllQrCodes([])
       setTemplates([])
+      setShopProducts([])
     }
 
     if (canManageJournal) {
@@ -466,6 +477,27 @@ export default function Dashboard() {
       )
     }
 
+    if (activeTab === 'shop-products') {
+      if (!isAdmin) return renderUnavailablePanel()
+
+      return (
+        <ShopProductsPanel
+          products={shopProducts}
+          templates={templates}
+          saving={savingShopProducts}
+          setSaving={setSavingShopProducts}
+          setFeedback={setFeedback}
+          setError={setError}
+          onCreated={(newProduct) => setShopProducts((prev) => [newProduct, ...prev])}
+          onUpdated={(updatedProduct) =>
+            setShopProducts((prev) =>
+              prev.map((item) => (item.id === updatedProduct.id ? updatedProduct : item)),
+            )
+          }
+        />
+      )
+    }
+
     if (activeTab === 'users') {
       if (!isAdmin) return renderUnavailablePanel()
 
@@ -559,7 +591,7 @@ export default function Dashboard() {
                     variants={fadeUp}
                     transition={{ duration: 0.45 }}
                   >
-                    Manage your codes, profile, articles, templates, users, platform access, and scan analytics.
+                    Manage your codes, profile, articles, templates, users, shop products, platform access, and scan analytics.
                   </motion.p>
                 </div>
 

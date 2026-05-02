@@ -20,6 +20,7 @@ export default function DashboardSidebar({
 
   const adminTabs = [
     { key: 'qr-codes', label: 'QR Codes', hint: 'Create and manage platform codes' },
+    { key: 'shop-products', label: 'Shop Products', hint: 'Manage products, collectibles, and images' },
     { key: 'templates', label: 'Templates', hint: 'Control locked official experiences' },
     { key: 'users', label: 'Users', hint: 'Manage roles, assignments, and access' },
     { key: 'journal', label: 'Journal', hint: 'Manage articles and publishing' },
@@ -37,7 +38,7 @@ export default function DashboardSidebar({
 
   function getRoleDescription() {
     if (role === 'admin') {
-      return 'You manage codes, templates, users, and official platform content.'
+      return 'You manage codes, templates, users, shop products, and official platform content.'
     }
 
     if (role === 'journalist') {

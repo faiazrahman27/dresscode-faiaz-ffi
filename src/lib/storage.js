@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 
-const STORAGE_BUCKET = 'avatars'
+const AVATARS_BUCKET = 'avatars'
+const SHOP_PRODUCTS_BUCKET = 'shop-products'
 const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024
 const HEADER_BYTES_TO_CHECK = 12
 
@@ -18,7 +19,14 @@ const EXTENSION_BY_TYPE = {
   'image/gif': 'gif',
 }
 
-const ALLOWED_FOLDERS = new Set(['avatars', 'images', 'general'])
+const ALLOWED_FOLDERS = new Set([
+  'avatars',
+  'images',
+  'general',
+  'products',
+  'collectibles',
+  'shop',
+])
 
 function sanitizeFolder(folder) {
   const normalized = String(folder || '').trim().toLowerCase() || 'general'
@@ -30,7 +38,7 @@ function isBrowserFile(file) {
 }
 
 function isValidUuid(value) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     String(value || ''),
   )
 }
@@ -124,7 +132,7 @@ function buildStoragePath({ userId, folder, file }) {
   return `${userId}/${safeFolder}/${crypto.randomUUID()}.${extension}`
 }
 
-export async function uploadImageToAvatars(file, folder = 'general') {
+async function uploadValidatedImage({ file, bucket, folder = 'general' }) {
   const validationError = await validateImageFile(file)
 
   if (validationError) {
@@ -157,7 +165,7 @@ export async function uploadImageToAvatars(file, folder = 'general') {
   }
 
   const { error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
+    .from(bucket)
     .upload(fileName, file, {
       cacheControl: '3600',
       contentType: file.type,
@@ -168,7 +176,7 @@ export async function uploadImageToAvatars(file, folder = 'general') {
     return { data: null, error: uploadError }
   }
 
-  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName)
+  const { data } = supabase.storage.from(bucket).getPublicUrl(fileName)
 
   if (!data?.publicUrl) {
     return {
@@ -179,9 +187,26 @@ export async function uploadImageToAvatars(file, folder = 'general') {
 
   return {
     data: {
+      bucket,
       path: fileName,
       publicUrl: data.publicUrl,
     },
     error: null,
   }
+}
+
+export async function uploadImageToAvatars(file, folder = 'general') {
+  return uploadValidatedImage({
+    file,
+    bucket: AVATARS_BUCKET,
+    folder,
+  })
+}
+
+export async function uploadShopProductImage(file, folder = 'products') {
+  return uploadValidatedImage({
+    file,
+    bucket: SHOP_PRODUCTS_BUCKET,
+    folder,
+  })
 }
