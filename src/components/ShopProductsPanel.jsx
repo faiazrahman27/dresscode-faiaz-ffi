@@ -189,7 +189,7 @@ export default function ShopProductsPanel({
       image_url: data.publicUrl,
     }))
 
-    setFeedback('Image uploaded. Save the product to keep this image URL.')
+    setFeedback('Image uploaded as a square shop image. Save the product to keep this image URL.')
   }
 
   async function handleSubmit(e) {
@@ -247,17 +247,19 @@ export default function ShopProductsPanel({
   return (
     <div className="grid gap-6">
       <div className="surface-card p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
             <div className="eyebrow mb-3">Shop catalog</div>
-            <h2 className="display text-3xl font-bold">Products and collectibles</h2>
-            <p className="muted mt-3 max-w-3xl">
-              Manage the public shop catalog from here. Images are uploaded to Supabase Storage and
-              saved into the product record, so you do not need to hardcode image paths.
+            <h2 className="display text-3xl font-bold leading-tight">
+              Products and collectibles
+            </h2>
+            <p className="muted mt-3 max-w-3xl leading-7">
+              Manage the public shop catalog from here. Images are uploaded to Supabase Storage,
+              prepared as square shop images, and saved into the product record.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid shrink-0 grid-cols-3 gap-3 text-center">
             <div className="rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
               <div className="text-2xl font-bold text-[#5ECFCF]">{activeCount}</div>
               <div className="text-xs text-white/55">Active</div>
@@ -277,15 +279,15 @@ export default function ShopProductsPanel({
       <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="surface-card h-fit p-6">
           <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
+            <div className="min-w-0">
               <div className="eyebrow mb-3">{editingId ? 'Edit item' : 'Create item'}</div>
-              <h3 className="display text-2xl font-bold">
+              <h3 className="display text-2xl font-bold leading-tight">
                 {editingId ? 'Update catalog item' : 'New catalog item'}
               </h3>
             </div>
 
             {editingId ? (
-              <button type="button" className="btn btn-ghost" onClick={resetForm}>
+              <button type="button" className="btn btn-ghost shrink-0" onClick={resetForm}>
                 Cancel
               </button>
             ) : null}
@@ -364,15 +366,15 @@ export default function ShopProductsPanel({
               <label className="mb-2 block text-sm font-medium">Product Image</label>
 
               {form.image_url ? (
-                <div className="mb-4 overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20">
+                <div className="mb-4 aspect-square w-full overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20">
                   <img
                     src={form.image_url}
                     alt={form.name || 'Shop product preview'}
-                    className="h-44 w-full object-cover"
+                    className="h-full w-full object-cover"
                   />
                 </div>
               ) : (
-                <div className="mb-4 flex h-44 items-center justify-center rounded-2xl border border-dashed border-[rgba(94,207,207,0.18)] bg-black/20 text-sm text-white/45">
+                <div className="mb-4 flex aspect-square w-full items-center justify-center rounded-2xl border border-dashed border-[rgba(94,207,207,0.18)] bg-black/20 px-4 text-center text-sm text-white/45">
                   No image uploaded
                 </div>
               )}
@@ -386,7 +388,8 @@ export default function ShopProductsPanel({
               />
 
               <p className="mt-2 text-xs leading-5 text-white/45">
-                JPG, PNG, WebP, or GIF. Maximum 4 MB. Upload first, then save the product.
+                Upload any JPG, PNG, WebP, or GIF under 4 MB. The app prepares it as a square shop
+                image automatically.
               </p>
 
               <div className="mt-4">
@@ -494,7 +497,7 @@ export default function ShopProductsPanel({
               {saving
                 ? 'Saving...'
                 : imageUploading
-                  ? 'Uploading image...'
+                  ? 'Preparing square image...'
                   : editingId
                     ? 'Update Product'
                     : 'Create Product'}
@@ -505,8 +508,10 @@ export default function ShopProductsPanel({
         <div className="grid gap-4">
           {sortedProducts.length === 0 ? (
             <div className="surface-card p-8">
-              <h3 className="display mb-3 text-2xl font-bold">No shop products yet</h3>
-              <p className="muted">
+              <h3 className="display mb-3 text-2xl font-bold leading-tight">
+                No shop products yet
+              </h3>
+              <p className="muted leading-7">
                 Create products and collectibles here. They will appear on the public shop when
                 active.
               </p>
@@ -515,25 +520,25 @@ export default function ShopProductsPanel({
 
           {sortedProducts.map((product) => (
             <div key={product.id} className="surface-card p-5">
-              <div className="grid gap-5 lg:grid-cols-[190px_minmax(0,1fr)]">
-                <div className="overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20">
+              <div className="grid gap-5 2xl:grid-cols-[240px_minmax(0,1fr)]">
+                <div className="aspect-square w-full overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20 2xl:w-[240px]">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
                       alt={product.name}
-                      className="h-44 w-full object-cover lg:h-full"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-44 items-center justify-center px-4 text-center text-sm text-white/45 lg:h-full">
+                    <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm text-white/45">
                       No image
                     </div>
                   )}
                 </div>
 
                 <div className="min-w-0">
-                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
-                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] px-3 py-1 text-xs font-semibold text-[#5ECFCF]">
                           {categoryLabel(product.category)}
                         </span>
@@ -551,36 +556,46 @@ export default function ShopProductsPanel({
                         </span>
                       </div>
 
-                      <h3 className="display truncate text-2xl font-bold">{product.name}</h3>
-                      <div className="mt-1 break-all text-sm text-white/45">{product.slug}</div>
+                      <h3 className="display max-w-full break-words text-2xl font-bold leading-tight">
+                        {product.name}
+                      </h3>
+                      <div className="mt-2 max-w-full break-words text-sm leading-5 text-white/45">
+                        {product.slug}
+                      </div>
                     </div>
 
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-[#5ECFCF]">
+                    <div className="shrink-0 text-left lg:text-right">
+                      <div className="text-2xl font-bold leading-tight text-[#5ECFCF]">
                         {formatShopPrice(product.price_cents, product.currency)}
                       </div>
-                      <div className="text-xs text-white/45">{product.qr_quantity} QR / item</div>
+                      <div className="mt-1 text-xs text-white/45">
+                        {product.qr_quantity} QR / item
+                      </div>
                     </div>
                   </div>
 
-                  <p className="mb-4 line-clamp-3 text-sm leading-7 text-white/62">
+                  <p className="mb-4 max-w-3xl break-words text-sm leading-7 text-white/62">
                     {product.description || 'No description added.'}
                   </p>
 
                   <div className="mb-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
+                    <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Sort</div>
-                      <div className="mt-1 font-semibold">{product.sort_order || 0}</div>
+                      <div className="mt-1 break-words font-semibold">
+                        {product.sort_order || 0}
+                      </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
+                    <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Currency</div>
-                      <div className="mt-1 font-semibold">{product.currency}</div>
+                      <div className="mt-1 break-words font-semibold">
+                        {product.currency}
+                      </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
+                    <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Template</div>
-                      <div className="mt-1 truncate font-semibold">
+                      <div className="mt-1 break-words font-semibold">
                         {product.template_id ? 'Assigned' : 'None'}
                       </div>
                     </div>

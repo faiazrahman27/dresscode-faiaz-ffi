@@ -87,6 +87,14 @@ export default function Shop() {
     [products, selectedProductId],
   )
 
+  const productItems = useMemo(() => {
+    return products.filter((product) => product.category !== 'collectible')
+  }, [products])
+
+  const collectibleItems = useMemo(() => {
+    return products.filter((product) => product.category === 'collectible')
+  }, [products])
+
   const totalPrice = useMemo(() => {
     if (!selectedProduct) return formatShopPrice(0, 'EUR')
 
@@ -179,6 +187,99 @@ export default function Shop() {
     setFeedback('Simulated order created. QR code assignment is ready.')
   }
 
+  function renderProductCard(product) {
+    const selected = product.id === selectedProductId
+
+    return (
+      <motion.button
+        key={product.id}
+        type="button"
+        onClick={() => handleSelectProduct(product.id)}
+        className={`surface-card relative min-w-0 overflow-hidden p-5 text-left transition ${
+          selected
+            ? 'border-[rgba(94,207,207,0.38)] bg-[rgba(94,207,207,0.08)]'
+            : ''
+        }`}
+        variants={fadeUp}
+        transition={{ duration: 0.35 }}
+      >
+        <div className="editor-card-glow" />
+
+        <div className="relative z-[1] grid gap-5">
+          <div className="aspect-square w-full overflow-hidden rounded-[22px] border border-[rgba(94,207,207,0.14)] bg-black/20">
+            {product.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm text-white/45">
+                No image
+              </div>
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="rounded-full border border-[rgba(94,207,207,0.18)] bg-[rgba(94,207,207,0.08)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] text-[#5ECFCF]">
+                {formatCategory(product.category)}
+              </div>
+
+              <div className="rounded-full border border-[rgba(94,207,207,0.18)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-xs font-semibold text-[#5ECFCF]">
+                {product.qr_quantity} QR
+              </div>
+            </div>
+
+            <h2 className="display max-w-full break-words text-2xl font-bold leading-tight">
+              {product.name}
+            </h2>
+
+            <p className="muted mt-3 max-w-full break-words text-sm leading-7">
+              {product.description || 'QR-linked product for buyer-bound activation.'}
+            </p>
+
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.12em] text-white/45">Price</div>
+                <div className="mt-1 text-2xl font-bold leading-tight text-[#5ECFCF]">
+                  {formatShopPrice(product.price_cents, product.currency)}
+                </div>
+              </div>
+
+              <div className="rounded-full border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-white/70">
+                {product.code_type === 'locked' ? 'Template locked' : 'Open code'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.button>
+    )
+  }
+
+  function renderShopSection(title, eyebrow, description, items) {
+    if (!items.length) return null
+
+    return (
+      <section className="grid gap-5">
+        <div className="surface-card p-6">
+          <div className="eyebrow mb-3">{eyebrow}</div>
+          <h2 className="display text-3xl font-bold leading-tight">{title}</h2>
+          <p className="muted mt-3 max-w-3xl leading-7">{description}</p>
+        </div>
+
+        <motion.div
+          className="grid gap-5 md:grid-cols-2"
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+        >
+          {items.map((product) => renderProductCard(product))}
+        </motion.div>
+      </section>
+    )
+  }
+
   return (
     <div className="app-shell editor-page min-h-screen bg-[#0A1F1F] px-4 py-8 text-white">
       <div className="page-noise" />
@@ -202,7 +303,7 @@ export default function Shop() {
           <div className="editor-card-glow" />
 
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div className="min-w-0">
               <motion.div variants={fadeUp} transition={{ duration: 0.35 }}>
                 <div className="eyebrow mb-3">Simulated shop</div>
               </motion.div>
@@ -216,7 +317,7 @@ export default function Shop() {
               </motion.h1>
 
               <motion.p
-                className="muted max-w-3xl"
+                className="muted max-w-3xl leading-7"
                 variants={fadeUp}
                 transition={{ duration: 0.35 }}
               >
@@ -226,7 +327,7 @@ export default function Shop() {
             </div>
 
             <motion.div
-              className="flex flex-wrap gap-3"
+              className="flex shrink-0 flex-wrap gap-3"
               variants={fadeUp}
               transition={{ duration: 0.35 }}
             >
@@ -252,7 +353,7 @@ export default function Shop() {
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-2xl border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.07)] p-4 text-sm text-white/75">
+        <div className="mb-6 rounded-2xl border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.07)] p-4 text-sm leading-7 text-white/75">
           Current mode: simulated checkout. No real payment is collected. The database still stores
           the order, generated QR code, scratch code, and assigned buyer email so the real payment
           layer can be added later.
@@ -267,8 +368,10 @@ export default function Shop() {
             transition={{ duration: 0.35 }}
           >
             <div className="eyebrow mb-4">Shop</div>
-            <h2 className="display mb-3 text-3xl font-bold">Loading products...</h2>
-            <p className="muted">Preparing the simulated shop catalog.</p>
+            <h2 className="display mb-3 text-3xl font-bold leading-tight">
+              Loading products...
+            </h2>
+            <p className="muted leading-7">Preparing the simulated shop catalog.</p>
           </motion.div>
         ) : null}
 
@@ -281,71 +384,35 @@ export default function Shop() {
             transition={{ duration: 0.35 }}
           >
             <div className="eyebrow mb-4">Shop</div>
-            <h2 className="display mb-3 text-3xl font-bold">No active products</h2>
-            <p className="muted">Add active shop products in the database to test checkout.</p>
+            <h2 className="display mb-3 text-3xl font-bold leading-tight">
+              No active products
+            </h2>
+            <p className="muted leading-7">
+              Add active shop products from the dashboard to test checkout.
+            </p>
           </motion.div>
         ) : null}
 
         {!loading && products.length > 0 ? (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <motion.div
-              className="grid gap-5 md:grid-cols-2"
-              variants={stagger}
-              initial="hidden"
-              animate="visible"
-            >
-              {products.map((product) => {
-                const selected = product.id === selectedProductId
+            <div className="grid gap-8">
+              {renderShopSection(
+                'Products',
+                'QR products',
+                'Physical product concepts that generate buyer-bound QR codes for activation testing.',
+                productItems,
+              )}
 
-                return (
-                  <motion.button
-                    key={product.id}
-                    type="button"
-                    onClick={() => handleSelectProduct(product.id)}
-                    className={`surface-card relative overflow-hidden p-6 text-left transition ${
-                      selected
-                        ? 'border-[rgba(94,207,207,0.38)] bg-[rgba(94,207,207,0.08)]'
-                        : ''
-                    }`}
-                    variants={fadeUp}
-                    transition={{ duration: 0.35 }}
-                  >
-                    <div className="editor-card-glow" />
-
-                    <div className="mb-5 flex items-start justify-between gap-4">
-                      <div>
-                        <div className="eyebrow mb-2">{formatCategory(product.category)}</div>
-                        <h2 className="display text-2xl font-bold">{product.name}</h2>
-                      </div>
-
-                      <div className="rounded-full border border-[rgba(94,207,207,0.18)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-sm text-[#5ECFCF]">
-                        {product.qr_quantity} QR
-                      </div>
-                    </div>
-
-                    <p className="muted mb-6 min-h-[72px]">
-                      {product.description || 'QR-linked product for buyer-bound activation.'}
-                    </p>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm text-white/45">Price</div>
-                        <div className="text-2xl font-bold text-[#5ECFCF]">
-                          {formatShopPrice(product.price_cents, product.currency)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-full border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-white/70">
-                        {product.code_type === 'locked' ? 'Template locked' : 'Open code'}
-                      </div>
-                    </div>
-                  </motion.button>
-                )
-              })}
-            </motion.div>
+              {renderShopSection(
+                'Collectibles',
+                'Limited items',
+                'Collectible drops and identity-linked items for testing ownership, activation, and public profile flows.',
+                collectibleItems,
+              )}
+            </div>
 
             <motion.div
-              className="surface-card h-fit p-6"
+              className="surface-card h-fit p-6 xl:sticky xl:top-28"
               variants={fadeUp}
               initial="hidden"
               animate="visible"
@@ -353,8 +420,10 @@ export default function Shop() {
             >
               <div className="mb-6">
                 <div className="eyebrow mb-3">Checkout simulation</div>
-                <h2 className="display text-2xl font-bold">Create buyer-bound QR</h2>
-                <p className="muted mt-2">
+                <h2 className="display text-2xl font-bold leading-tight">
+                  Create buyer-bound QR
+                </h2>
+                <p className="muted mt-2 leading-7">
                   The buyer email will be attached to the generated QR code. Activation must match
                   that email.
                 </p>
@@ -375,6 +444,41 @@ export default function Shop() {
                     ))}
                   </select>
                 </div>
+
+                {selectedProduct ? (
+                  <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4">
+                    <div className="flex gap-4">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20">
+                        {selectedProduct.image_url ? (
+                          <img
+                            src={selectedProduct.image_url}
+                            alt={selectedProduct.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-white/40">
+                            No image
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="break-words font-semibold leading-snug">
+                          {selectedProduct.name}
+                        </div>
+                        <div className="mt-1 text-sm text-white/45">
+                          {selectedProduct.qr_quantity} QR / item
+                        </div>
+                        <div className="mt-2 text-lg font-bold text-[#5ECFCF]">
+                          {formatShopPrice(
+                            selectedProduct.price_cents,
+                            selectedProduct.currency,
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">Buyer Name</label>
@@ -447,18 +551,18 @@ export default function Shop() {
             transition={{ duration: 0.35 }}
           >
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
+              <div className="min-w-0">
                 <div className="eyebrow mb-3">Order created</div>
-                <h2 className="display text-3xl font-bold">
+                <h2 className="display break-words text-3xl font-bold leading-tight">
                   {orderResult.order?.order_number}
                 </h2>
-                <p className="muted mt-2">
+                <p className="muted mt-2 break-words leading-7">
                   Assigned to {orderResult.order?.buyer_email}. Keep the scratch code for testing
                   activation.
                 </p>
               </div>
 
-              <div className="rounded-[18px] border border-[rgba(94,207,207,0.14)] bg-[rgba(94,207,207,0.08)] p-4 text-sm text-white/75">
+              <div className="shrink-0 rounded-[18px] border border-[rgba(94,207,207,0.14)] bg-[rgba(94,207,207,0.08)] p-4 text-sm leading-7 text-white/75">
                 Status: {orderResult.order?.status}
                 <br />
                 Payment: {orderResult.order?.payment_status}
@@ -473,29 +577,31 @@ export default function Shop() {
                 return (
                   <div
                     key={qr.id}
-                    className="rounded-[20px] border border-[rgba(94,207,207,0.14)] bg-[rgba(255,255,255,0.025)] p-5"
+                    className="min-w-0 rounded-[20px] border border-[rgba(94,207,207,0.14)] bg-[rgba(255,255,255,0.025)] p-5"
                   >
                     <div className="mb-4">
                       <div className="text-sm uppercase tracking-[0.14em] text-[#5ECFCF]">
                         Generated QR Code
                       </div>
-                      <div className="mt-2 break-all text-xl font-bold">{qr.code}</div>
+                      <div className="mt-2 break-all text-xl font-bold leading-snug">
+                        {qr.code}
+                      </div>
                     </div>
 
                     <div className="grid gap-3 text-sm">
-                      <div className="rounded-[14px] bg-black/20 p-3">
+                      <div className="min-w-0 rounded-[14px] bg-black/20 p-3">
                         <div className="text-white/45">Scratch Code</div>
-                        <div className="mt-1 font-mono text-lg text-white">
+                        <div className="mt-1 break-all font-mono text-lg leading-snug text-white">
                           {qr.scratch_code}
                         </div>
                       </div>
 
-                      <div className="rounded-[14px] bg-black/20 p-3">
+                      <div className="min-w-0 rounded-[14px] bg-black/20 p-3">
                         <div className="text-white/45">Assigned Email</div>
                         <div className="mt-1 break-all text-white">{qr.assigned_email}</div>
                       </div>
 
-                      <div className="rounded-[14px] bg-black/20 p-3">
+                      <div className="min-w-0 rounded-[14px] bg-black/20 p-3">
                         <div className="text-white/45">Activation URL</div>
                         <div className="mt-1 break-all text-white">{activationUrl}</div>
                       </div>
@@ -517,7 +623,7 @@ export default function Shop() {
                       </button>
                     </div>
 
-                    <div className="mt-4 break-all text-xs text-white/45">
+                    <div className="mt-4 break-all text-xs leading-5 text-white/45">
                       Public URL after activation: {publicUrl}
                     </div>
                   </div>

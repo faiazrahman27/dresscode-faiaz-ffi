@@ -613,13 +613,13 @@ export default function AdminQrCodesPanel({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)] 2xl:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)] 2xl:grid-cols-[420px_minmax(0,1fr)]">
       <div className="grid gap-6">
         <div className="surface-card h-fit p-6">
           <div className="eyebrow mb-4">Admin</div>
-          <h2 className="display mb-6 text-3xl font-bold">Create QR Codes</h2>
+          <h2 className="display mb-6 text-3xl font-bold leading-tight">Create QR Codes</h2>
 
-          <div className="mb-5 flex gap-2">
+          <div className="mb-5 flex flex-wrap gap-2">
             <button
               type="button"
               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
@@ -665,7 +665,7 @@ export default function AdminQrCodesPanel({
 
               <div>
                 <label className="mb-2 block text-sm font-medium">Public Code</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     className="field min-w-0"
@@ -679,7 +679,11 @@ export default function AdminQrCodesPanel({
                     }
                     placeholder="DC-XXXXXX-XXXX"
                   />
-                  <button type="button" className="btn btn-ghost shrink-0" onClick={regenerateCode}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost shrink-0"
+                    onClick={regenerateCode}
+                  >
                     Regenerate
                   </button>
                 </div>
@@ -687,7 +691,7 @@ export default function AdminQrCodesPanel({
 
               <div>
                 <label className="mb-2 block text-sm font-medium">Scratch Code</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     className="field min-w-0"
@@ -701,7 +705,11 @@ export default function AdminQrCodesPanel({
                     }
                     placeholder="XXXX-XXXX-XXXX"
                   />
-                  <button type="button" className="btn btn-ghost shrink-0" onClick={regenerateScratch}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost shrink-0"
+                    onClick={regenerateScratch}
+                  >
                     Regenerate
                   </button>
                 </div>
@@ -739,7 +747,7 @@ export default function AdminQrCodesPanel({
                   }
                   placeholder="futurecustomer@example.com"
                 />
-                <div className="mt-2 text-sm text-white/50">
+                <div className="mt-2 text-sm leading-6 text-white/50">
                   Only this email can activate this QR code. Leave empty for an unassigned code.
                 </div>
               </div>
@@ -862,9 +870,9 @@ export default function AdminQrCodesPanel({
                   }
                   placeholder="futurecustomer@example.com"
                 />
-                <div className="mt-2 text-sm text-white/50">
-                  All generated QR codes in this batch will be reserved for this email.
-                  Leave empty for unassigned codes.
+                <div className="mt-2 text-sm leading-6 text-white/50">
+                  All generated QR codes in this batch will be reserved for this email. Leave empty
+                  for unassigned codes.
                 </div>
               </div>
 
@@ -917,7 +925,7 @@ export default function AdminQrCodesPanel({
                 {saving ? 'Creating...' : 'Create Bulk QR Codes'}
               </button>
 
-              <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/62">
+              <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm leading-7 text-white/62">
                 Bulk generation creates unique public codes and scratch codes automatically.
                 Maximum: 500 at a time.
               </div>
@@ -933,9 +941,11 @@ export default function AdminQrCodesPanel({
                 {lastBulkCreated.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-3 text-sm"
+                    className="min-w-0 rounded-[14px] border border-[rgba(94,207,207,0.08)] bg-[rgba(255,255,255,0.02)] p-3 text-sm"
                   >
-                    <div className="font-semibold break-words">{item.label || item.code}</div>
+                    <div className="break-words font-semibold leading-snug">
+                      {item.label || item.code}
+                    </div>
                     <div className="break-all text-white/55">{item.code}</div>
                     <div className="break-all text-white/55">Scratch: {item.scratch_code}</div>
                     {item.assigned_email ? (
@@ -950,20 +960,20 @@ export default function AdminQrCodesPanel({
           ) : null}
         </div>
 
-        <div className="surface-card p-6 min-w-0">
+        <div className="surface-card min-w-0 p-6">
           <div className="eyebrow mb-4">QR preview</div>
-          <h2 className="display mb-4 break-all text-2xl font-bold">
+          <h2 className="display mb-4 break-all text-2xl font-bold leading-tight">
             {selectedQr ? selectedQr.code : 'Select a QR code'}
           </h2>
 
-          <div className="flex flex-col gap-5 min-w-0">
+          <div className="flex min-w-0 flex-col gap-5">
             <div className="self-start rounded-[20px] border border-[rgba(94,207,207,0.12)] bg-white p-4">
               <canvas ref={canvasRef} width={240} height={240} />
             </div>
 
             <div className="min-w-0 text-sm leading-7 text-white/62">
               {selectedQr ? (
-                <div className="grid gap-2 min-w-0">
+                <div className="grid min-w-0 gap-2">
                   <div className="break-all">
                     <strong>Public URL:</strong> {window.location.origin}/p/{selectedQr.code}
                   </div>
@@ -991,17 +1001,17 @@ export default function AdminQrCodesPanel({
         </div>
       </div>
 
-      <div className="surface-card p-6 min-w-0">
+      <div className="surface-card min-w-0 p-6">
         <div className="mb-5 flex flex-col gap-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
+            <div className="min-w-0">
               <div className="eyebrow mb-3">Admin list</div>
-              <h2 className="display text-3xl font-bold">QR Codes</h2>
+              <h2 className="display text-3xl font-bold leading-tight">QR Codes</h2>
             </div>
 
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary shrink-0"
               onClick={() => exportCsv(filteredQrCodes)}
             >
               Export Filtered CSV
@@ -1106,7 +1116,7 @@ export default function AdminQrCodesPanel({
                 <option value="code_desc">Code Z-A</option>
               </select>
 
-              <div className="flex items-center text-sm text-white/52">
+              <div className="flex items-center text-sm leading-6 text-white/52">
                 Showing {pagedQrCodes.length} of {filteredQrCodes.length} matching codes
               </div>
             </div>
@@ -1114,7 +1124,7 @@ export default function AdminQrCodesPanel({
         </div>
 
         <div className="max-h-[900px] overflow-y-auto pr-2">
-          <div className="grid gap-4 min-w-0">
+          <div className="grid min-w-0 gap-4">
             {pagedQrCodes.length ? (
               pagedQrCodes.map((item) => {
                 const expanded = expandedIds.includes(item.id)
@@ -1122,15 +1132,15 @@ export default function AdminQrCodesPanel({
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-[18px] border p-4 min-w-0 ${
+                    className={`min-w-0 rounded-[18px] border p-4 ${
                       selectedQrId === item.id
                         ? 'border-[rgba(94,207,207,0.3)] bg-[rgba(94,207,207,0.06)]'
                         : 'border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)]'
                     }`}
                   >
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+                    <div className="grid min-w-0 gap-4">
                       <div className="min-w-0">
-                        <div className="text-xl font-bold leading-tight text-white break-words">
+                        <div className="max-w-full whitespace-normal break-words text-xl font-bold leading-snug text-white">
                           {item.label || item.code}
                         </div>
 
@@ -1139,10 +1149,12 @@ export default function AdminQrCodesPanel({
                           <span className="badge">
                             {item.activated ? 'Redeemed' : 'Pending'}
                           </span>
-                          {item.assigned_email ? <span className="badge">Email reserved</span> : null}
+                          {item.assigned_email ? (
+                            <span className="badge">Email reserved</span>
+                          ) : null}
                         </div>
 
-                        <div className="mt-4 grid gap-1 text-sm text-white/60">
+                        <div className="mt-4 grid min-w-0 gap-1 text-sm leading-7 text-white/60">
                           <div className="break-all">
                             <strong>Code:</strong> {item.code}
                           </div>
@@ -1160,7 +1172,7 @@ export default function AdminQrCodesPanel({
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3 xl:max-w-[340px] xl:justify-end">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           className="btn btn-ghost"
@@ -1209,8 +1221,8 @@ export default function AdminQrCodesPanel({
                     </div>
 
                     {expanded ? (
-                      <div className="mt-4 grid gap-4 border-t border-[rgba(94,207,207,0.08)] pt-4 lg:grid-cols-2 min-w-0">
-                        <div className="grid gap-2 text-sm text-white/62 min-w-0">
+                      <div className="mt-4 grid min-w-0 gap-4 border-t border-[rgba(94,207,207,0.08)] pt-4 lg:grid-cols-2">
+                        <div className="grid min-w-0 gap-2 text-sm leading-7 text-white/62">
                           <div className="break-all">
                             <strong>ID:</strong> {item.id}
                           </div>
@@ -1231,9 +1243,11 @@ export default function AdminQrCodesPanel({
                           </div>
                         </div>
 
-                        <div className="grid gap-3 min-w-0">
+                        <div className="grid min-w-0 gap-3">
                           <div>
-                            <label className="mb-2 block text-sm font-medium">Assigned Template</label>
+                            <label className="mb-2 block text-sm font-medium">
+                              Assigned Template
+                            </label>
                             <select
                               className="field"
                               value={item.template_id || '__none__'}

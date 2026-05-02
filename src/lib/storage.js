@@ -4,6 +4,8 @@ const AVATARS_BUCKET = 'avatars'
 const SHOP_PRODUCTS_BUCKET = 'shop-products'
 const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024
 const HEADER_BYTES_TO_CHECK = 12
+const SHOP_PRODUCT_IMAGE_SIZE = 1200
+const SHOP_PRODUCT_IMAGE_QUALITY = 0.86
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg',
@@ -132,6 +134,113 @@ function buildStoragePath({ userId, folder, file }) {
   return `${userId}/${safeFolder}/${crypto.randomUUID()}.${extension}`
 }
 
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        resolve(blob)
+      },
+      type,
+      quality,
+    )
+  })
+}
+
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(image)
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Could not load the selected image.'))
+    }
+
+    image.src = objectUrl
+  })
+}
+
+function drawContainedImage(ctx, image, canvasSize) {
+  const sourceWidth = image.naturalWidth || image.width
+  const sourceHeight = image.naturalHeight || image.height
+
+  const scale = Math.min(canvasSize / sourceWidth, canvasSize / sourceHeight)
+  const drawWidth = sourceWidth * scale
+  const drawHeight = sourceHeight * scale
+  const drawX = (canvasSize - drawWidth) / 2
+  const drawY = (canvasSize - drawHeight) / 2
+
+  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+}
+
+function drawCoverImage(ctx, image, canvasSize) {
+  const sourceWidth = image.naturalWidth || image.width
+  const sourceHeight = image.naturalHeight || image.height
+
+  const scale = Math.max(canvasSize / sourceWidth, canvasSize / sourceHeight)
+  const drawWidth = sourceWidth * scale
+  const drawHeight = sourceHeight * scale
+  const drawX = (canvasSize - drawWidth) / 2
+  const drawY = (canvasSize - drawHeight) / 2
+
+  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+}
+
+async function prepareSquareShopProductImage(file) {
+  const image = await loadImageFromFile(file)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = SHOP_PRODUCT_IMAGE_SIZE
+  canvas.height = SHOP_PRODUCT_IMAGE_SIZE
+
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) {
+    throw new Error('Could not prepare the product image.')
+  }
+
+  // Background: fill the square with a blurred cover version of the same image.
+  ctx.save()
+  ctx.filter = 'blur(28px)'
+  drawCoverImage(ctx, image, SHOP_PRODUCT_IMAGE_SIZE)
+  ctx.restore()
+
+  // Dark overlay keeps product cards visually consistent with the Dresscode UI.
+  ctx.fillStyle = 'rgba(8, 24, 24, 0.42)'
+  ctx.fillRect(0, 0, SHOP_PRODUCT_IMAGE_SIZE, SHOP_PRODUCT_IMAGE_SIZE)
+
+  // Foreground: keep the original image fully visible and centered.
+  drawContainedImage(ctx, image, SHOP_PRODUCT_IMAGE_SIZE)
+
+  const blob = await canvasToBlob(
+    canvas,
+    'image/webp',
+    SHOP_PRODUCT_IMAGE_QUALITY,
+  )
+
+  if (!blob) {
+    throw new Error('Could not convert the product image to WebP.')
+  }
+
+  if (blob.size <= 0) {
+    throw new Error('Prepared product image is empty.')
+  }
+
+  if (blob.size > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error('Prepared product image is larger than 4 MB.')
+  }
+
+  return new File([blob], 'shop-product-image.webp', {
+    type: 'image/webp',
+    lastModified: Date.now(),
+  })
+}
+
 async function uploadValidatedImage({ file, bucket, folder = 'general' }) {
   const validationError = await validateImageFile(file)
 
@@ -204,8 +313,22 @@ export async function uploadImageToAvatars(file, folder = 'general') {
 }
 
 export async function uploadShopProductImage(file, folder = 'products') {
+  const validationError = await validateImageFile(file)
+
+  if (validationError) {
+    return { data: null, error: new Error(validationError) }
+  }
+
+  let preparedFile = null
+
+  try {
+    preparedFile = await prepareSquareShopProductImage(file)
+  } catch (error) {
+    return { data: null, error }
+  }
+
   return uploadValidatedImage({
-    file,
+    file: preparedFile,
     bucket: SHOP_PRODUCTS_BUCKET,
     folder,
   })
