@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createShopProduct,
   updateShopProduct,
 } from '../lib/dashboard'
 import { formatShopPrice } from '../lib/shop'
 import { uploadShopProductImage } from '../lib/storage'
+
+const SHOP_PRODUCTS_DRAFT_STORAGE_KEY = 'dresscode.dashboard.shopProductsPanelDraft'
 
 const EMPTY_FORM = {
   slug: '',
@@ -33,6 +35,90 @@ const CODE_TYPE_OPTIONS = [
   { value: 'open', label: 'Open code' },
   { value: 'locked', label: 'Locked template' },
 ]
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function getSavedDraft() {
+  if (typeof window === 'undefined') {
+    return {
+      form: EMPTY_FORM,
+      editingId: null,
+    }
+  }
+
+  try {
+    const rawDraft = window.sessionStorage.getItem(SHOP_PRODUCTS_DRAFT_STORAGE_KEY)
+
+    if (!rawDraft) {
+      return {
+        form: EMPTY_FORM,
+        editingId: null,
+      }
+    }
+
+    const parsed = JSON.parse(rawDraft)
+
+    if (!isPlainObject(parsed)) {
+      return {
+        form: EMPTY_FORM,
+        editingId: null,
+      }
+    }
+
+    const savedForm = isPlainObject(parsed.form) ? parsed.form : {}
+
+    return {
+      form: {
+        ...EMPTY_FORM,
+        ...savedForm,
+        qr_quantity: Number(savedForm.qr_quantity || EMPTY_FORM.qr_quantity),
+        sort_order: Number(savedForm.sort_order || EMPTY_FORM.sort_order),
+        is_active:
+          typeof savedForm.is_active === 'boolean'
+            ? savedForm.is_active
+            : EMPTY_FORM.is_active,
+      },
+      editingId:
+        typeof parsed.editingId === 'string' && parsed.editingId.trim()
+          ? parsed.editingId
+          : null,
+    }
+  } catch {
+    return {
+      form: EMPTY_FORM,
+      editingId: null,
+    }
+  }
+}
+
+function saveDraft(form, editingId) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(
+      SHOP_PRODUCTS_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        form,
+        editingId,
+        savedAt: new Date().toISOString(),
+      }),
+    )
+  } catch {
+    // Local draft persistence is a convenience feature. Ignore storage failures.
+  }
+}
+
+function clearDraft() {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.removeItem(SHOP_PRODUCTS_DRAFT_STORAGE_KEY)
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 function slugify(value) {
   return String(value || '')
@@ -118,9 +204,15 @@ export default function ShopProductsPanel({
   onCreated,
   onUpdated,
 }) {
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null)
+  const initialDraft = useMemo(() => getSavedDraft(), [])
+
+  const [form, setForm] = useState(initialDraft.form)
+  const [editingId, setEditingId] = useState(initialDraft.editingId)
   const [imageUploading, setImageUploading] = useState(false)
+
+  useEffect(() => {
+    saveDraft(form, editingId)
+  }, [form, editingId])
 
   const sortedProducts = useMemo(() => {
     return [...(products || [])].sort((a, b) => {
@@ -138,6 +230,7 @@ export default function ShopProductsPanel({
   const activeCount = sortedProducts.filter((item) => item.is_active).length
 
   function resetForm() {
+    clearDraft()
     setForm(EMPTY_FORM)
     setEditingId(null)
   }

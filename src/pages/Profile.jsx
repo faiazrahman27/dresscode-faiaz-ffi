@@ -50,6 +50,26 @@ function normalizeUrl(url, platform = '') {
   return `https://${trimmed}`
 }
 
+function normalizeCodeParam(value) {
+  return String(value || '').trim()
+}
+
+function buildActivationPath(codeValue) {
+  return `/activate/${encodeURIComponent(normalizeCodeParam(codeValue))}`
+}
+
+function buildEditorPath(codeValue) {
+  return `/editor/${encodeURIComponent(normalizeCodeParam(codeValue))}`
+}
+
+async function safelyRecordScan(qrCodeId) {
+  try {
+    await insertScan(qrCodeId)
+  } catch {
+    // Scan analytics should never block the public profile from loading.
+  }
+}
+
 function platformLabel(platform, fallback) {
   const map = {
     instagram: 'Instagram',
@@ -246,6 +266,8 @@ export default function Profile() {
   const location = useLocation()
   const { user } = useAuth()
 
+  const safeCode = normalizeCodeParam(code)
+
   const [loading, setLoading] = useState(true)
   const [state, setState] = useState('loading')
   const [qrCode, setQrCode] = useState(null)
@@ -260,7 +282,13 @@ export default function Profile() {
       setLoading(true)
       setErrorMessage('')
 
-      const { data: qr, error: qrError } = await getQrCodeByCode(code)
+      if (!safeCode) {
+        setState('not-found')
+        setLoading(false)
+        return
+      }
+
+      const { data: qr, error: qrError } = await getQrCodeByCode(safeCode)
 
       if (!active) return
 
@@ -286,9 +314,9 @@ export default function Profile() {
       }
 
       if (!qr.activated) {
-        navigate(`/activate/${code}`, {
+        navigate(buildActivationPath(safeCode), {
           replace: true,
-          state: { from: location },
+          state: { from: location.pathname },
         })
         return
       }
@@ -321,7 +349,7 @@ export default function Profile() {
           return
         }
 
-        await insertScan(qr.id)
+        await safelyRecordScan(qr.id)
         setState('active')
         setLoading(false)
         return
@@ -351,7 +379,7 @@ export default function Profile() {
         return
       }
 
-      await insertScan(qr.id)
+      await safelyRecordScan(qr.id)
       setState('active')
       setLoading(false)
     }
@@ -361,7 +389,7 @@ export default function Profile() {
     return () => {
       active = false
     }
-  }, [code, navigate, location])
+  }, [safeCode, navigate, location.pathname])
 
   if (loading) {
     return (
@@ -587,7 +615,7 @@ export default function Profile() {
             {canEditThisPage ? (
               <button
                 type="button"
-                onClick={() => navigate(`/editor/${code}`)}
+                onClick={() => navigate(buildEditorPath(safeCode))}
                 className="btn btn-secondary"
               >
                 Edit Page

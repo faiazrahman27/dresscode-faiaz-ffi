@@ -43,6 +43,23 @@ export default function MyCodesPanel({ codes, user }) {
     }
   }, [codes])
 
+  function getCodeRoute(codeValue) {
+    return `/p/${encodeURIComponent(String(codeValue || '').trim())}`
+  }
+
+  function getActivationRoute(codeValue) {
+    return `/activate/${encodeURIComponent(String(codeValue || '').trim())}`
+  }
+
+  function getEditorRoute(codeValue) {
+    return `/editor/${encodeURIComponent(String(codeValue || '').trim())}`
+  }
+
+  function handleViewLive(codeValue) {
+    if (!codeValue) return
+    navigate(getCodeRoute(codeValue))
+  }
+
   async function handleCopy(url, codeValue) {
     try {
       await navigator.clipboard.writeText(url)
@@ -89,14 +106,13 @@ export default function MyCodesPanel({ codes, user }) {
     isActivatedByCurrentUser,
     isLocked,
     isOpen,
-    publicUrl,
   }) {
     if (isAssignedOnly) {
       return (
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => navigate(`/activate/${code.code}`)}
+          onClick={() => navigate(getActivationRoute(code.code))}
         >
           Activate
         </button>
@@ -108,7 +124,7 @@ export default function MyCodesPanel({ codes, user }) {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => navigate(`/editor/${code.code}`)}
+          onClick={() => navigate(getEditorRoute(code.code))}
         >
           Edit Profile
         </button>
@@ -120,7 +136,7 @@ export default function MyCodesPanel({ codes, user }) {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => window.open(publicUrl, '_blank')}
+          onClick={() => handleViewLive(code.code)}
         >
           Open Official Page
         </button>
@@ -132,7 +148,7 @@ export default function MyCodesPanel({ codes, user }) {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => navigate(`/activate/${code.code}`)}
+          onClick={() => navigate(getActivationRoute(code.code))}
         >
           Activate
         </button>
@@ -190,7 +206,6 @@ export default function MyCodesPanel({ codes, user }) {
           isActivatedByCurrentUser,
           isLocked,
           isOpen,
-          publicUrl,
         })
 
         return (
@@ -300,7 +315,7 @@ export default function MyCodesPanel({ codes, user }) {
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => window.open(publicUrl, '_blank')}
+                  onClick={() => handleViewLive(code.code)}
                 >
                   View Live
                 </button>

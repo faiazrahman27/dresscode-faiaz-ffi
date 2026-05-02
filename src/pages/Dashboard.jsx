@@ -27,6 +27,21 @@ import {
   updateTemplate,
 } from '../lib/dashboard'
 
+const DASHBOARD_ACTIVE_TAB_STORAGE_KEY = 'dresscode.dashboard.activeTab'
+
+const ADMIN_ONLY_TABS = ['qr-codes', 'shop-products', 'users', 'templates']
+
+const ALL_DASHBOARD_TABS = new Set([
+  'my-codes',
+  'analytics',
+  'account',
+  'journal',
+  'qr-codes',
+  'shop-products',
+  'users',
+  'templates',
+])
+
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
@@ -42,7 +57,41 @@ const heroStagger = {
   },
 }
 
-const ADMIN_ONLY_TABS = ['qr-codes', 'shop-products', 'users', 'templates']
+function getStoredDashboardTab() {
+  if (typeof window === 'undefined') return 'my-codes'
+
+  try {
+    const storedTab = window.sessionStorage.getItem(DASHBOARD_ACTIVE_TAB_STORAGE_KEY)
+    return ALL_DASHBOARD_TABS.has(storedTab) ? storedTab : 'my-codes'
+  } catch {
+    return 'my-codes'
+  }
+}
+
+function saveStoredDashboardTab(tab) {
+  if (typeof window === 'undefined') return
+  if (!ALL_DASHBOARD_TABS.has(tab)) return
+
+  try {
+    window.sessionStorage.setItem(DASHBOARD_ACTIVE_TAB_STORAGE_KEY, tab)
+  } catch {
+    // Ignore storage failures. The dashboard should still work without persistence.
+  }
+}
+
+function isDashboardTabAllowed(tab, { isAdmin, canManageJournal }) {
+  if (!ALL_DASHBOARD_TABS.has(tab)) return false
+
+  if (ADMIN_ONLY_TABS.includes(tab)) {
+    return isAdmin
+  }
+
+  if (tab === 'journal') {
+    return canManageJournal
+  }
+
+  return true
+}
 
 function GlitterField({ count = 16 }) {
   return (
@@ -66,7 +115,7 @@ function GlitterField({ count = 16 }) {
 export default function Dashboard() {
   const { user, profile, signOut, refreshProfile } = useAuth()
 
-  const [activeTab, setActiveTab] = useState('my-codes')
+  const [activeTab, setActiveTab] = useState(() => getStoredDashboardTab())
   const [codes, setCodes] = useState([])
   const [scanCount, setScanCount] = useState(0)
   const [users, setUsers] = useState([])
@@ -76,6 +125,7 @@ export default function Dashboard() {
   const [articles, setArticles] = useState([])
   const [shopProducts, setShopProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [hasLoadedDashboard, setHasLoadedDashboard] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [savingQr, setSavingQr] = useState(false)
@@ -94,17 +144,35 @@ export default function Dashboard() {
   }, [isAdmin])
 
   useEffect(() => {
-    setActiveTab(defaultTab)
-  }, [defaultTab])
+    if (!profile) return
 
-  useEffect(() => {
-    const adminOnlyTabBlocked = !isAdmin && ADMIN_ONLY_TABS.includes(activeTab)
-    const journalTabBlocked = !canManageJournal && activeTab === 'journal'
+    const allowed = isDashboardTabAllowed(activeTab, {
+      isAdmin,
+      canManageJournal,
+    })
 
-    if (adminOnlyTabBlocked || journalTabBlocked) {
+    if (!allowed) {
       setActiveTab(defaultTab)
     }
-  }, [activeTab, canManageJournal, defaultTab, isAdmin])
+  }, [activeTab, canManageJournal, defaultTab, isAdmin, profile])
+
+  useEffect(() => {
+    if (!profile) return
+
+    const allowed = isDashboardTabAllowed(activeTab, {
+      isAdmin,
+      canManageJournal,
+    })
+
+    if (allowed) {
+      saveStoredDashboardTab(activeTab)
+    }
+  }, [activeTab, canManageJournal, isAdmin, profile])
+
+  const handleChangeDashboardTab = useCallback((nextTab) => {
+    if (!ALL_DASHBOARD_TABS.has(nextTab)) return
+    setActiveTab(nextTab)
+  }, [])
 
   const loadDashboard = useCallback(async () => {
     if (!user || !profile) return
@@ -197,6 +265,7 @@ export default function Dashboard() {
       setArticles([])
     }
 
+    setHasLoadedDashboard(true)
     setLoading(false)
   }, [canManageJournal, isAdmin, profile, user])
 
@@ -301,7 +370,7 @@ export default function Dashboard() {
   )
 
   function renderWelcomeGuide() {
-    if (loading || isAdmin) return null
+    if (!hasLoadedDashboard || isAdmin) return null
 
     const hasCodes = codes.length > 0
     const showNewUserGuide = !hasCodes
@@ -406,7 +475,7 @@ export default function Dashboard() {
   }
 
   function renderMainPanel() {
-    if (loading) {
+    if (loading && !hasLoadedDashboard) {
       return (
         <div className="surface-card p-8">
           <h2 className="display text-3xl font-bold">Loading dashboard...</h2>
@@ -631,7 +700,7 @@ export default function Dashboard() {
                   <DashboardSidebar
                     profile={profile}
                     activeTab={activeTab}
-                    onChangeTab={setActiveTab}
+                    onChangeTab={handleChangeDashboardTab}
                   />
                 </div>
               </motion.div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   createBlockByType,
   createEmptySection,
@@ -7,6 +7,8 @@ import {
   sanitizePageDataForStorage,
 } from '../lib/pageBuilder'
 import { uploadImageToAvatars } from '../lib/storage'
+
+const TEMPLATE_DRAFT_STORAGE_KEY = 'dresscode.dashboard.templatesPanelDraft'
 
 const LIMITS = {
   templateName: 120,
@@ -102,6 +104,10 @@ function sanitizeNumber(value, min, max, fallback) {
   }
 
   return Math.max(min, Math.min(max, number))
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
 function isValidHexColor(value) {
@@ -348,6 +354,61 @@ function sanitizePageData(rawPageData) {
   }
 }
 
+function getSavedTemplateDraft() {
+  const fallbackDraft = {
+    newTemplateName: '',
+    selectedTemplateId: '',
+    templateName: '',
+    pageData: defaultPageData,
+  }
+
+  if (typeof window === 'undefined') {
+    return fallbackDraft
+  }
+
+  try {
+    const rawDraft = window.sessionStorage.getItem(TEMPLATE_DRAFT_STORAGE_KEY)
+
+    if (!rawDraft) {
+      return fallbackDraft
+    }
+
+    const parsed = JSON.parse(rawDraft)
+
+    if (!isPlainObject(parsed)) {
+      return fallbackDraft
+    }
+
+    return {
+      newTemplateName: sanitizeLiveText(parsed.newTemplateName || '', LIMITS.templateName),
+      selectedTemplateId: sanitizeSingleLineText(parsed.selectedTemplateId || '', 80),
+      templateName: sanitizeLiveText(parsed.templateName || '', LIMITS.templateName),
+      pageData: sanitizePageData(parsed.pageData || defaultPageData),
+    }
+  } catch {
+    return fallbackDraft
+  }
+}
+
+function saveTemplateDraft({ newTemplateName, selectedTemplateId, templateName, pageData }) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(
+      TEMPLATE_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        newTemplateName,
+        selectedTemplateId,
+        templateName,
+        pageData,
+        savedAt: new Date().toISOString(),
+      }),
+    )
+  } catch {
+    // Local draft persistence is a convenience feature. Ignore storage failures.
+  }
+}
+
 function sanitizeBlockField(block, field, value) {
   if (field === 'content') return sanitizeMultilineText(value, LIMITS.textContent)
   if (field === 'bio') return sanitizeMultilineText(value, LIMITS.bio)
@@ -385,10 +446,12 @@ export default function TemplatesPanel({
   onSaveTemplate,
   saving,
 }) {
-  const [newTemplateName, setNewTemplateName] = useState('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState('')
-  const [pageData, setPageData] = useState(defaultPageData)
-  const [templateName, setTemplateName] = useState('')
+  const savedDraft = useMemo(() => getSavedTemplateDraft(), [])
+
+  const [newTemplateName, setNewTemplateName] = useState(savedDraft.newTemplateName)
+  const [selectedTemplateId, setSelectedTemplateId] = useState(savedDraft.selectedTemplateId)
+  const [pageData, setPageData] = useState(savedDraft.pageData)
+  const [templateName, setTemplateName] = useState(savedDraft.templateName)
   const [feedback, setFeedback] = useState('')
   const [error, setError] = useState('')
   const [uploadingBlockId, setUploadingBlockId] = useState('')
@@ -398,6 +461,15 @@ export default function TemplatesPanel({
     () => templates.find((item) => item.id === selectedTemplateId) || null,
     [templates, selectedTemplateId],
   )
+
+  useEffect(() => {
+    saveTemplateDraft({
+      newTemplateName,
+      selectedTemplateId,
+      templateName,
+      pageData,
+    })
+  }, [newTemplateName, selectedTemplateId, templateName, pageData])
 
   function hydrateTemplate(template) {
     const cleanedPageData = sanitizePageData(template.page_data || defaultPageData)
