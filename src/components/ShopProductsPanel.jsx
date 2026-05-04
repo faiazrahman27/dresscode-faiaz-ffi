@@ -352,18 +352,20 @@ export default function ShopProductsPanel({
             </p>
           </div>
 
-          <div className="grid shrink-0 grid-cols-3 gap-3 text-center">
-            <div className="rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-              <div className="text-2xl font-bold text-[#5ECFCF]">{activeCount}</div>
-              <div className="text-xs text-white/55">Active</div>
+          <div className="grid w-full shrink-0 grid-cols-3 gap-3 text-center sm:w-auto">
+            <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
+              <div className="text-2xl font-bold leading-tight text-[#5ECFCF]">{activeCount}</div>
+              <div className="mt-1 text-xs text-white/55">Active</div>
             </div>
-            <div className="rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-              <div className="text-2xl font-bold text-[#5ECFCF]">{productCount}</div>
-              <div className="text-xs text-white/55">Products</div>
+            <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
+              <div className="text-2xl font-bold leading-tight text-[#5ECFCF]">{productCount}</div>
+              <div className="mt-1 text-xs text-white/55">Products</div>
             </div>
-            <div className="rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-              <div className="text-2xl font-bold text-[#5ECFCF]">{collectibleCount}</div>
-              <div className="text-xs text-white/55">Collectibles</div>
+            <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] px-3 py-3">
+              <div className="text-2xl font-bold leading-tight text-[#5ECFCF]">
+                {collectibleCount}
+              </div>
+              <div className="mt-1 text-xs text-white/55">Collectibles</div>
             </div>
           </div>
         </div>
@@ -598,7 +600,7 @@ export default function ShopProductsPanel({
           </form>
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           {sortedProducts.length === 0 ? (
             <div className="surface-card p-8">
               <h3 className="display mb-3 text-2xl font-bold leading-tight">
@@ -612,9 +614,9 @@ export default function ShopProductsPanel({
           ) : null}
 
           {sortedProducts.map((product) => (
-            <div key={product.id} className="surface-card p-5">
-              <div className="grid gap-5 2xl:grid-cols-[240px_minmax(0,1fr)]">
-                <div className="aspect-square w-full overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20 2xl:w-[240px]">
+            <div key={product.id} className="surface-card overflow-hidden p-5">
+              <div className="grid min-w-0 gap-5 2xl:grid-cols-[220px_minmax(0,1fr)] 2xl:items-start">
+                <div className="aspect-square w-full max-w-[260px] overflow-hidden rounded-2xl border border-[rgba(94,207,207,0.12)] bg-black/20 2xl:w-[220px] 2xl:max-w-none">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
@@ -629,14 +631,14 @@ export default function ShopProductsPanel({
                 </div>
 
                 <div className="min-w-0">
-                  <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] px-3 py-1 text-xs font-semibold text-[#5ECFCF]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-[rgba(94,207,207,0.16)] bg-[rgba(94,207,207,0.08)] px-3 py-1 text-xs font-semibold leading-5 text-[#5ECFCF]">
                           {categoryLabel(product.category)}
                         </span>
                         <span
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold leading-5 ${
                             product.is_active
                               ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-200'
                               : 'border-red-400/20 bg-red-400/10 text-red-200'
@@ -644,51 +646,52 @@ export default function ShopProductsPanel({
                         >
                           {product.is_active ? 'Active' : 'Hidden'}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/60">
+                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs leading-5 text-white/60">
                           {product.code_type === 'locked' ? 'Locked' : 'Open'}
                         </span>
                       </div>
-
-                      <h3 className="display max-w-full break-words text-2xl font-bold leading-tight">
-                        {product.name}
-                      </h3>
-                      <div className="mt-2 max-w-full break-words text-sm leading-5 text-white/45">
-                        {product.slug}
-                      </div>
                     </div>
 
-                    <div className="shrink-0 text-left lg:text-right">
-                      <div className="text-2xl font-bold leading-tight text-[#5ECFCF]">
+                    <div className="shrink-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.025)] px-4 py-3 text-left sm:text-right">
+                      <div className="whitespace-nowrap text-2xl font-bold leading-tight text-[#5ECFCF]">
                         {formatShopPrice(product.price_cents, product.currency)}
                       </div>
-                      <div className="mt-1 text-xs text-white/45">
+                      <div className="mt-1 whitespace-nowrap text-xs text-white/45">
                         {product.qr_quantity} QR / item
                       </div>
                     </div>
                   </div>
 
-                  <p className="mb-4 max-w-3xl break-words text-sm leading-7 text-white/62">
+                  <h3 className="display max-w-full whitespace-normal break-words text-xl font-bold leading-tight sm:text-2xl">
+                    {product.name}
+                  </h3>
+
+                  <div className="mt-2 max-w-full break-all text-sm leading-5 text-white/45">
+                    {product.slug}
+                  </div>
+
+                  <p className="mt-4 max-w-3xl whitespace-normal break-words text-sm leading-7 text-white/62">
                     {product.description || 'No description added.'}
                   </p>
 
-                  <div className="mb-4 grid gap-3 md:grid-cols-3">
+                  <div className="my-4 grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
                     <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Sort</div>
-                      <div className="mt-1 break-words font-semibold">
+                      <div className="mt-1 whitespace-nowrap font-semibold">
                         {product.sort_order || 0}
                       </div>
                     </div>
 
                     <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Currency</div>
-                      <div className="mt-1 break-words font-semibold">
+                      <div className="mt-1 whitespace-nowrap font-semibold">
                         {product.currency}
                       </div>
                     </div>
 
                     <div className="min-w-0 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-3">
                       <div className="text-xs text-white/45">Template</div>
-                      <div className="mt-1 break-words font-semibold">
+                      <div className="mt-1 whitespace-nowrap font-semibold">
                         {product.template_id ? 'Assigned' : 'None'}
                       </div>
                     </div>
