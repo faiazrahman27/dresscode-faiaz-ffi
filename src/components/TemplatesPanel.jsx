@@ -62,9 +62,22 @@ const SOCIAL_PLATFORMS = new Set([
   'phone',
 ])
 
+function stripControlCharacters(value, { allowMultiline = false } = {}) {
+  return Array.from(String(value || ''))
+    .filter((char) => {
+      const code = char.charCodeAt(0)
+
+      if (allowMultiline && (code === 9 || code === 10 || code === 13)) {
+        return true
+      }
+
+      return !((code >= 0 && code <= 31) || code === 127)
+    })
+    .join('')
+}
+
 function sanitizeLiveText(value, maxLength) {
-  return String(value || '')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
+  return stripControlCharacters(value)
     .replace(/[<>]/g, '')
     .slice(0, maxLength)
 }
@@ -74,8 +87,7 @@ function sanitizeSingleLineText(value, maxLength) {
 }
 
 function sanitizeMultilineText(value, maxLength) {
-  return String(value || '')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+  return stripControlCharacters(value, { allowMultiline: true })
     .replace(/[<>]/g, '')
     .replace(/\r\n/g, '\n')
     .replace(/\n{5,}/g, '\n\n\n\n')
@@ -83,8 +95,7 @@ function sanitizeMultilineText(value, maxLength) {
 }
 
 function sanitizeUrl(value) {
-  return String(value || '')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
+  return stripControlCharacters(value)
     .replace(/[<>]/g, '')
     .trim()
     .slice(0, LIMITS.url)
@@ -296,9 +307,11 @@ function sanitizeBlock(block) {
 }
 
 function sanitizePageData(rawPageData) {
-  const loadedPageData = rawPageData || defaultPageData
-  const loadedSettings = loadedPageData.settings || {}
-  const loadedBackground = loadedSettings.background || {}
+  const loadedPageData = isPlainObject(rawPageData) ? rawPageData : defaultPageData
+  const loadedSettings = isPlainObject(loadedPageData.settings) ? loadedPageData.settings : {}
+  const loadedBackground = isPlainObject(loadedSettings.background) ? loadedSettings.background : {}
+  const loadedNavbar = isPlainObject(loadedPageData.navbar) ? loadedPageData.navbar : {}
+  const loadedSections = Array.isArray(loadedPageData.sections) ? loadedPageData.sections : []
 
   return {
     ...defaultPageData,
@@ -320,37 +333,48 @@ function sanitizePageData(rawPageData) {
     },
     navbar: {
       ...defaultPageData.navbar,
-      ...(loadedPageData.navbar || {}),
-      enabled: Boolean(loadedPageData.navbar?.enabled),
-      brandText: sanitizeSingleLineText(
-        loadedPageData.navbar?.brandText || '',
-        LIMITS.brandText,
-      ),
-      links: (loadedPageData.navbar?.links || []).map(sanitizeNavbarLink),
+      ...loadedNavbar,
+      enabled: Boolean(loadedNavbar.enabled),
+      brandText: sanitizeSingleLineText(loadedNavbar.brandText || '', LIMITS.brandText),
+      links: Array.isArray(loadedNavbar.links) ? loadedNavbar.links.map(sanitizeNavbarLink) : [],
     },
-    sections: (loadedPageData.sections || []).slice(0, LIMITS.sections).map((section, index) => ({
-      ...createEmptySection(index, section.columns?.length || 1),
-      ...section,
-      id: section.id || crypto.randomUUID(),
-      name: sanitizeSingleLineText(section.name || `Section ${index + 1}`, LIMITS.sectionName),
-      anchorId: sanitizeAnchorId(section.anchorId || ''),
-      paddingTop: sanitizeNumber(section.paddingTop, 0, 240, 48),
-      paddingBottom: sanitizeNumber(section.paddingBottom, 0, 240, 48),
-      paddingSides: sanitizeNumber(section.paddingSides, 0, 120, 24),
-      background: {
-        type: sanitizeBackgroundType(section.background?.type || 'none', 'none'),
-        value: section.background?.type === 'color'
-          ? normalizeHexColor(section.background?.value, '')
-          : '',
-      },
-      columns: (section.columns || []).slice(0, 4).map((column) => ({
-        id: column.id || crypto.randomUUID(),
-        blocks: (column.blocks || [])
-          .slice(0, LIMITS.blocksPerColumn)
-          .map(sanitizeBlock)
-          .filter(Boolean),
-      })),
-    })),
+    sections: loadedSections.slice(0, LIMITS.sections).map((section, index) => {
+      const safeSection = isPlainObject(section) ? section : {}
+      const safeColumns = Array.isArray(safeSection.columns) ? safeSection.columns : []
+
+      return {
+        ...createEmptySection(index, safeColumns.length || 1),
+        ...safeSection,
+        id: safeSection.id || crypto.randomUUID(),
+        name: sanitizeSingleLineText(
+          safeSection.name || `Section ${index + 1}`,
+          LIMITS.sectionName,
+        ),
+        anchorId: sanitizeAnchorId(safeSection.anchorId || ''),
+        paddingTop: sanitizeNumber(safeSection.paddingTop, 0, 240, 48),
+        paddingBottom: sanitizeNumber(safeSection.paddingBottom, 0, 240, 48),
+        paddingSides: sanitizeNumber(safeSection.paddingSides, 0, 120, 24),
+        background: {
+          type: sanitizeBackgroundType(safeSection.background?.type || 'none', 'none'),
+          value:
+            safeSection.background?.type === 'color'
+              ? normalizeHexColor(safeSection.background?.value, '')
+              : '',
+        },
+        columns: safeColumns.slice(0, 4).map((column) => {
+          const safeColumn = isPlainObject(column) ? column : {}
+          const safeBlocks = Array.isArray(safeColumn.blocks) ? safeColumn.blocks : []
+
+          return {
+            id: safeColumn.id || crypto.randomUUID(),
+            blocks: safeBlocks
+              .slice(0, LIMITS.blocksPerColumn)
+              .map(sanitizeBlock)
+              .filter(Boolean),
+          }
+        }),
+      }
+    }),
   }
 }
 
@@ -545,9 +569,10 @@ export default function TemplatesPanel({
       ...prev,
       navbar: {
         ...prev.navbar,
-        [field]: field === 'brandText'
-          ? sanitizeLiveText(value, LIMITS.brandText)
-          : Boolean(value),
+        [field]:
+          field === 'brandText'
+            ? sanitizeLiveText(value, LIMITS.brandText)
+            : Boolean(value),
       },
     }))
   }

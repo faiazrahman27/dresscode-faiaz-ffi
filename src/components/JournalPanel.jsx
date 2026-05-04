@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createArticle, updateArticle, deleteArticle } from '../lib/dashboard'
 
 const JOURNAL_DRAFT_STORAGE_KEY = 'dresscode.dashboard.journalPanelDraft'
@@ -112,19 +112,29 @@ export default function JournalPanel({
   setError,
   setFeedback,
 }) {
-  const initialDraft = useMemo(() => getSavedDraft(), [])
-
-  const [form, setForm] = useState(initialDraft.form)
-  const [editingId, setEditingId] = useState(initialDraft.editingId)
+  const [draft, setDraft] = useState(() => getSavedDraft())
+  const [form, setForm] = useState(() => draft.form)
+  const [editingId, setEditingId] = useState(() => draft.editingId)
 
   useEffect(() => {
     saveDraft(form, editingId)
   }, [form, editingId])
 
+  function updateFormField(field, value) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
   function resetForm() {
     clearDraft()
     setForm(emptyArticleForm)
     setEditingId(null)
+    setDraft({
+      form: emptyArticleForm,
+      editingId: null,
+    })
   }
 
   async function handleSubmit(e) {
@@ -134,6 +144,11 @@ export default function JournalPanel({
 
     if (!form.title || !form.content) {
       setError('Title and content are required.')
+      return
+    }
+
+    if (!user?.id) {
+      setError('User context is missing.')
       return
     }
 
@@ -157,7 +172,7 @@ export default function JournalPanel({
       }
 
       setArticles((prev) =>
-        prev.map((a) => (a.id === editingId ? data : a)),
+        prev.map((article) => (article.id === editingId ? data : article)),
       )
 
       setFeedback('Article updated.')
@@ -170,7 +185,6 @@ export default function JournalPanel({
       }
 
       setArticles((prev) => [data, ...prev])
-
       setFeedback('Article created.')
     }
 
@@ -185,7 +199,8 @@ export default function JournalPanel({
   }
 
   async function handleDelete(id) {
-    if (!confirm('Delete this article?')) return
+    const confirmed = confirm('Delete this article?')
+    if (!confirmed) return
 
     setError('')
     setFeedback('')
@@ -201,7 +216,7 @@ export default function JournalPanel({
       resetForm()
     }
 
-    setArticles((prev) => prev.filter((a) => a.id !== id))
+    setArticles((prev) => prev.filter((article) => article.id !== id))
     setFeedback('Deleted.')
   }
 
@@ -229,7 +244,7 @@ export default function JournalPanel({
             placeholder="Title"
             value={form.title}
             maxLength={180}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) => updateFormField('title', e.target.value)}
           />
 
           <input
@@ -237,7 +252,7 @@ export default function JournalPanel({
             placeholder="Tag"
             value={form.tag}
             maxLength={80}
-            onChange={(e) => setForm({ ...form, tag: e.target.value })}
+            onChange={(e) => updateFormField('tag', e.target.value)}
           />
 
           <input
@@ -245,7 +260,7 @@ export default function JournalPanel({
             placeholder="Read Time (e.g. 5 min)"
             value={form.read_time}
             maxLength={80}
-            onChange={(e) => setForm({ ...form, read_time: e.target.value })}
+            onChange={(e) => updateFormField('read_time', e.target.value)}
           />
 
           <textarea
@@ -253,7 +268,7 @@ export default function JournalPanel({
             placeholder="Excerpt"
             value={form.excerpt}
             maxLength={500}
-            onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+            onChange={(e) => updateFormField('excerpt', e.target.value)}
           />
 
           <textarea
@@ -262,14 +277,14 @@ export default function JournalPanel({
             placeholder="Content"
             value={form.content}
             maxLength={20000}
-            onChange={(e) => setForm({ ...form, content: e.target.value })}
+            onChange={(e) => updateFormField('content', e.target.value)}
           />
 
           <label className="flex items-center gap-3 rounded-2xl border border-[rgba(94,207,207,0.1)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-white/75">
             <input
               type="checkbox"
               checked={form.published}
-              onChange={(e) => setForm({ ...form, published: e.target.checked })}
+              onChange={(e) => updateFormField('published', e.target.checked)}
             />
             <span>Publish</span>
           </label>
@@ -291,28 +306,30 @@ export default function JournalPanel({
             </div>
           ) : null}
 
-          {articles.map((a) => (
+          {articles.map((article) => (
             <div
-              key={a.id}
+              key={article.id}
               className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4"
             >
-              <div className="break-words font-bold">{a.title}</div>
-              <div className="mt-1 break-words text-sm text-white/70">{a.tag}</div>
+              <div className="break-words font-bold">{article.title}</div>
+              <div className="mt-1 break-words text-sm text-white/70">
+                {article.tag}
+              </div>
               <div className="mt-2 text-sm text-white/60">
-                Published: {String(a.published)}
+                Published: {String(article.published)}
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handleEdit(a)}
+                  onClick={() => handleEdit(article)}
                   className="btn btn-secondary"
                 >
                   Edit
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(a.id)}
+                  onClick={() => handleDelete(article.id)}
                   className="btn btn-secondary"
                 >
                   Delete

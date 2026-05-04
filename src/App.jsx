@@ -1,6 +1,6 @@
+import { useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect } from 'react'
 
 import Home from './pages/Home'
 import Portal from './pages/Portal'
@@ -74,7 +74,7 @@ export default function App() {
   const location = useLocation()
 
   const isStandalone = STANDALONE_PREFIXES.some((prefix) =>
-    location.pathname.startsWith(prefix)
+    location.pathname.startsWith(prefix),
   )
 
   return (
@@ -93,6 +93,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/how-it-works"
             element={
@@ -101,6 +102,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/use-cases"
             element={
@@ -109,6 +111,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/solutions"
             element={
@@ -117,6 +120,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/about"
             element={
@@ -125,6 +129,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/why-it-matters"
             element={
@@ -133,6 +138,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/journal"
             element={
@@ -141,6 +147,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/contact"
             element={
@@ -149,6 +156,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/shop"
             element={
@@ -157,6 +165,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/portal"
             element={
@@ -165,6 +174,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/dashboard"
             element={
@@ -175,6 +185,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/editor/:code"
             element={
@@ -185,6 +196,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/activate/:code"
             element={
@@ -193,6 +205,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/p/:code"
             element={
@@ -201,6 +214,7 @@ export default function App() {
               </RouteShell>
             }
           />
+
           <Route
             path="/p/:code/html"
             element={

@@ -58,13 +58,13 @@ const heroStagger = {
 }
 
 function getStoredDashboardTab() {
-  if (typeof window === 'undefined') return 'my-codes'
+  if (typeof window === 'undefined') return null
 
   try {
     const storedTab = window.sessionStorage.getItem(DASHBOARD_ACTIVE_TAB_STORAGE_KEY)
-    return ALL_DASHBOARD_TABS.has(storedTab) ? storedTab : 'my-codes'
+    return ALL_DASHBOARD_TABS.has(storedTab) ? storedTab : null
   } catch {
-    return 'my-codes'
+    return null
   }
 }
 
@@ -143,36 +143,44 @@ export default function Dashboard() {
     return 'my-codes'
   }, [isAdmin])
 
-  useEffect(() => {
-    if (!profile) return
-
-    const allowed = isDashboardTabAllowed(activeTab, {
-      isAdmin,
-      canManageJournal,
-    })
-
-    if (!allowed) {
-      setActiveTab(defaultTab)
+  const resolvedActiveTab = useMemo(() => {
+    if (!profile) {
+      return activeTab || 'my-codes'
     }
+
+    if (
+      activeTab &&
+      isDashboardTabAllowed(activeTab, {
+        isAdmin,
+        canManageJournal,
+      })
+    ) {
+      return activeTab
+    }
+
+    return defaultTab
   }, [activeTab, canManageJournal, defaultTab, isAdmin, profile])
 
   useEffect(() => {
     if (!profile) return
+    saveStoredDashboardTab(resolvedActiveTab)
+  }, [profile, resolvedActiveTab])
 
-    const allowed = isDashboardTabAllowed(activeTab, {
-      isAdmin,
-      canManageJournal,
-    })
+  const handleChangeDashboardTab = useCallback(
+    (nextTab) => {
+      if (!ALL_DASHBOARD_TABS.has(nextTab)) return
 
-    if (allowed) {
-      saveStoredDashboardTab(activeTab)
-    }
-  }, [activeTab, canManageJournal, isAdmin, profile])
+      const allowed = isDashboardTabAllowed(nextTab, {
+        isAdmin,
+        canManageJournal,
+      })
 
-  const handleChangeDashboardTab = useCallback((nextTab) => {
-    if (!ALL_DASHBOARD_TABS.has(nextTab)) return
-    setActiveTab(nextTab)
-  }, [])
+      if (!allowed) return
+
+      setActiveTab(nextTab)
+    },
+    [canManageJournal, isAdmin],
+  )
 
   const loadDashboard = useCallback(async () => {
     if (!user || !profile) return
@@ -483,7 +491,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'my-codes') {
+    if (resolvedActiveTab === 'my-codes') {
       return (
         <div className="grid gap-6">
           {renderWelcomeGuide()}
@@ -493,11 +501,11 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'analytics') {
+    if (resolvedActiveTab === 'analytics') {
       return <ScanAnalyticsPanel />
     }
 
-    if (activeTab === 'account') {
+    if (resolvedActiveTab === 'account') {
       return (
         <AccountPanel
           profile={profile}
@@ -508,7 +516,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'templates') {
+    if (resolvedActiveTab === 'templates') {
       if (!isAdmin) return renderUnavailablePanel()
 
       return (
@@ -521,7 +529,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'qr-codes') {
+    if (resolvedActiveTab === 'qr-codes') {
       if (!isAdmin) return renderUnavailablePanel()
 
       return (
@@ -546,7 +554,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'shop-products') {
+    if (resolvedActiveTab === 'shop-products') {
       if (!isAdmin) return renderUnavailablePanel()
 
       return (
@@ -567,7 +575,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'users') {
+    if (resolvedActiveTab === 'users') {
       if (!isAdmin) return renderUnavailablePanel()
 
       return (
@@ -600,7 +608,7 @@ export default function Dashboard() {
       )
     }
 
-    if (activeTab === 'journal') {
+    if (resolvedActiveTab === 'journal') {
       if (!canManageJournal) return renderUnavailablePanel()
 
       return (
@@ -699,7 +707,7 @@ export default function Dashboard() {
                 <div className="dashboard-sidebar-shell">
                   <DashboardSidebar
                     profile={profile}
-                    activeTab={activeTab}
+                    activeTab={resolvedActiveTab}
                     onChangeTab={handleChangeDashboardTab}
                   />
                 </div>
