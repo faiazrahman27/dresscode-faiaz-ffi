@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import {
   createBulkQrCodes,
@@ -15,7 +15,15 @@ const SCRATCH_CODE_PATTERN = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 const CODE_TYPES = new Set(['open', 'locked'])
-const FILTER_OPTIONS = new Set(['all', 'pending', 'redeemed', 'open', 'locked', 'templated'])
+const FILTER_OPTIONS = new Set([
+  'all',
+  'pending',
+  'redeemed',
+  'open',
+  'locked',
+  'templated',
+  'batched',
+])
 const SORT_OPTIONS = new Set([
   'created_desc',
   'created_asc',
@@ -37,11 +45,24 @@ const LIMITS = {
   bulkMax: 500,
 }
 
+function stripControlCharacters(value, replacement = '') {
+  let output = ''
+
+  for (const character of String(value || '')) {
+    const code = character.charCodeAt(0)
+
+    if ((code >= 0 && code <= 31) || code === 127) {
+      output += replacement
+    } else {
+      output += character
+    }
+  }
+
+  return output
+}
+
 function sanitizeLiveText(value, maxLength) {
-  return String(value || '')
-    .replace(/[\u0000-\u001F\u007F]/g, '')
-    .replace(/[<>]/g, '')
-    .slice(0, maxLength)
+  return stripControlCharacters(value).replace(/[<>]/g, '').slice(0, maxLength)
 }
 
 function sanitizeSingleLineText(value, maxLength) {
@@ -95,7 +116,7 @@ function isValidTemplateId(templateId, templates) {
 }
 
 function safeCsvValue(value) {
-  let normalized = String(value ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ')
+  let normalized = stripControlCharacters(value ?? '', ' ')
 
   // Prevent CSV formula injection when admin-exported CSV is opened in spreadsheet software.
   if (/^[=+\-@]/.test(normalized.trim())) {
@@ -125,6 +146,7 @@ function exportCsv(rows) {
     'URL',
     'Template ID',
     'Assigned Email',
+    'Bulk Batch ID',
   ]
 
   const body = rows.map((row) => [
@@ -137,6 +159,7 @@ function exportCsv(rows) {
     `${window.location.origin}/p/${row.code}`,
     row.template_id || '',
     row.assigned_email || '',
+    row.bulk_batch_id || '',
   ])
 
   const csv = [headers, ...body]
@@ -151,9 +174,22 @@ function exportCsv(rows) {
 
 function formatDate(value) {
   if (!value) return '—'
+
   const d = new Date(value)
+
   if (Number.isNaN(d.getTime())) return '—'
+
   return d.toLocaleString()
+}
+
+function formatBatchId(value) {
+  if (!value) return 'None'
+
+  const stringValue = String(value)
+
+  if (stringValue.length <= 16) return stringValue
+
+  return `${stringValue.slice(0, 8)}...${stringValue.slice(-6)}`
 }
 
 function validateSingleQrForm(form, templates, currentUserId) {
@@ -171,7 +207,8 @@ function validateSingleQrForm(form, templates, currentUserId) {
   if (!QR_CODE_PATTERN.test(code)) {
     return {
       payload: null,
-      error: 'Public code must be 3–80 characters and may only contain letters, numbers, hyphens, or underscores.',
+      error:
+        'Public code must be 3–80 characters and may only contain letters, numbers, hyphens, or underscores.',
     }
   }
 
@@ -310,17 +347,20 @@ export default function AdminQrCodesPanel({
     [qrCodes, selectedQrId],
   )
 
-  useEffect(() => {
-    setPage(1)
-  }, [search, filter, sortBy])
-
   const counts = useMemo(() => {
     const all = qrCodes.length
     const pending = qrCodes.filter((row) => !row.activated).length
     const redeemed = qrCodes.filter((row) => row.activated).length
+    const batched = qrCodes.filter((row) => Boolean(row.bulk_batch_id)).length
 
-    return { all, pending, redeemed }
+    return { all, pending, redeemed, batched }
   }, [qrCodes])
+
+  const selectedBatchCount = useMemo(() => {
+    if (!selectedQr?.bulk_batch_id) return 0
+
+    return qrCodes.filter((row) => row.bulk_batch_id === selectedQr.bulk_batch_id).length
+  }, [qrCodes, selectedQr])
 
   const filteredQrCodes = useMemo(() => {
     const query = sanitizeSearchValue(search).trim().toLowerCase()
@@ -338,6 +378,7 @@ export default function AdminQrCodesPanel({
           row.code_type,
           row.template_id,
           row.assigned_email,
+          row.bulk_batch_id,
         ]
           .filter(Boolean)
           .join(' ')
@@ -352,26 +393,33 @@ export default function AdminQrCodesPanel({
     if (safeFilter === 'open') rows = rows.filter((row) => row.code_type === 'open')
     if (safeFilter === 'locked') rows = rows.filter((row) => row.code_type === 'locked')
     if (safeFilter === 'templated') rows = rows.filter((row) => Boolean(row.template_id))
+    if (safeFilter === 'batched') rows = rows.filter((row) => Boolean(row.bulk_batch_id))
 
     rows.sort((a, b) => {
       if (safeSortBy === 'created_desc') {
         return new Date(b.created_at || 0) - new Date(a.created_at || 0)
       }
+
       if (safeSortBy === 'created_asc') {
         return new Date(a.created_at || 0) - new Date(b.created_at || 0)
       }
+
       if (safeSortBy === 'label_asc') {
         return (a.label || a.code || '').localeCompare(b.label || b.code || '')
       }
+
       if (safeSortBy === 'label_desc') {
         return (b.label || b.code || '').localeCompare(a.label || a.code || '')
       }
+
       if (safeSortBy === 'code_asc') {
         return (a.code || '').localeCompare(b.code || '')
       }
+
       if (safeSortBy === 'code_desc') {
         return (b.code || '').localeCompare(a.code || '')
       }
+
       return 0
     })
 
@@ -429,6 +477,7 @@ export default function AdminQrCodesPanel({
     }
 
     onCreated(Array.isArray(data) ? data : [data])
+
     const createdRow = Array.isArray(data) ? data[0] : data
 
     if (createdRow?.id) {
@@ -477,16 +526,25 @@ export default function AdminQrCodesPanel({
       return
     }
 
-    onCreated(data || [])
-    setLastBulkCreated((data || []).slice(0, 3))
+    const createdRows = Array.isArray(data) ? data : []
 
-    if (data?.length) {
-      setSelectedQrId(data[0].id)
-      setExpandedIds((prev) => [...new Set([...prev, data[0].id])])
-      await drawPreview(data[0].code)
+    onCreated(createdRows)
+    setLastBulkCreated(createdRows.slice(0, 3))
+
+    if (createdRows.length) {
+      setSelectedQrId(createdRows[0].id)
+      setExpandedIds((prev) => [...new Set([...prev, createdRows[0].id])])
+      await drawPreview(createdRows[0].code)
     }
 
-    setFeedback(`${data?.length || 0} QR codes created successfully.`)
+    const batchId = createdRows.find((row) => row.bulk_batch_id)?.bulk_batch_id
+
+    setFeedback(
+      batchId
+        ? `${createdRows.length} QR codes created successfully in one scratch-code batch.`
+        : `${createdRows.length} QR codes created successfully.`,
+    )
+
     setBulkForm((prev) => ({
       ...prev,
       prefix: payload.prefix,
@@ -532,6 +590,7 @@ export default function AdminQrCodesPanel({
   async function handleDelete(qrCodeId, code) {
     const safeCode = sanitizeCodeValue(code)
     const confirmed = window.confirm(`Delete QR code ${safeCode || code}? This cannot be undone.`)
+
     if (!confirmed) return
 
     setError('')
@@ -551,6 +610,7 @@ export default function AdminQrCodesPanel({
 
     if (selectedQrId === qrCodeId) {
       setSelectedQrId('')
+
       if (canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d')
         ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height)
@@ -574,6 +634,7 @@ export default function AdminQrCodesPanel({
       width: 600,
       margin: 2,
     })
+
     downloadDataUrl(dataUrl, `${safeCode}.png`)
   }
 
@@ -588,6 +649,7 @@ export default function AdminQrCodesPanel({
     }
 
     const url = `${window.location.origin}/p/${safeCode}`
+
     await QRCode.toCanvas(canvasRef.current, url, {
       width: 240,
       margin: 2,
@@ -600,15 +662,22 @@ export default function AdminQrCodesPanel({
     )
   }
 
+  function handleSearchChange(value) {
+    setSearch(sanitizeSearchValue(value))
+    setPage(1)
+  }
+
   function handleSafeFilterChange(value) {
     if (FILTER_OPTIONS.has(value)) {
       setFilter(value)
+      setPage(1)
     }
   }
 
   function handleSafeSortChange(value) {
     if (SORT_OPTIONS.has(value)) {
       setSortBy(value)
+      setPage(1)
     }
   }
 
@@ -631,6 +700,7 @@ export default function AdminQrCodesPanel({
             >
               Single
             </button>
+
             <button
               type="button"
               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
@@ -926,8 +996,9 @@ export default function AdminQrCodesPanel({
               </button>
 
               <div className="rounded-[18px] border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.02)] p-4 text-sm leading-7 text-white/62">
-                Bulk generation creates unique public codes and scratch codes automatically.
-                Maximum: 500 at a time.
+                Bulk generation creates unique public codes and unique scratch codes. For newly
+                generated bulk batches, any unused scratch code from the same batch can activate any
+                unactivated QR code from that same batch. Maximum: 500 at a time.
               </div>
             </form>
           )}
@@ -937,6 +1008,7 @@ export default function AdminQrCodesPanel({
               <div className="mb-3 text-sm font-semibold text-[#5ECFCF]">
                 Last bulk result (first 3)
               </div>
+
               <div className="grid gap-3">
                 {lastBulkCreated.map((item) => (
                   <div
@@ -948,6 +1020,9 @@ export default function AdminQrCodesPanel({
                     </div>
                     <div className="break-all text-white/55">{item.code}</div>
                     <div className="break-all text-white/55">Scratch: {item.scratch_code}</div>
+                    <div className="break-all text-white/55">
+                      Batch: {formatBatchId(item.bulk_batch_id)}
+                    </div>
                     {item.assigned_email ? (
                       <div className="break-all text-white/55">
                         Reserved: {item.assigned_email}
@@ -989,6 +1064,17 @@ export default function AdminQrCodesPanel({
                   <div className="break-all">
                     <strong>Assigned Email:</strong> {selectedQr.assigned_email || 'None'}
                   </div>
+                  <div className="break-all">
+                    <strong>Bulk Batch:</strong> {selectedQr.bulk_batch_id || 'None'}
+                  </div>
+                  {selectedQr.bulk_batch_id ? (
+                    <div className="rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(94,207,207,0.06)] p-3 text-white/72">
+                      This QR belongs to a bulk scratch-code pool with {selectedBatchCount} QR code
+                      {selectedBatchCount === 1 ? '' : 's'}. Any unused scratch from this batch can
+                      activate any unactivated QR in the same batch, while assignment restrictions
+                      still apply.
+                    </div>
+                  ) : null}
                   <div>
                     <strong>Created:</strong> {formatDate(selectedQr.created_at)}
                   </div>
@@ -1024,8 +1110,8 @@ export default function AdminQrCodesPanel({
               className="field"
               value={search}
               maxLength={LIMITS.search}
-              onChange={(e) => setSearch(sanitizeSearchValue(e.target.value))}
-              placeholder="Search by code, scratch, label, type, template, email..."
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search by code, scratch, label, type, template, email, batch..."
             />
 
             <div className="flex flex-wrap gap-2">
@@ -1100,6 +1186,18 @@ export default function AdminQrCodesPanel({
               >
                 Templated
               </button>
+
+              <button
+                type="button"
+                onClick={() => handleSafeFilterChange('batched')}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === 'batched'
+                    ? 'bg-[#5ECFCF] text-[#071515]'
+                    : 'border border-[rgba(94,207,207,0.12)] bg-[rgba(255,255,255,0.03)] text-white/75'
+                }`}
+              >
+                Batched ({counts.batched})
+              </button>
             </div>
 
             <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
@@ -1146,12 +1244,9 @@ export default function AdminQrCodesPanel({
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="badge">{item.code_type}</span>
-                          <span className="badge">
-                            {item.activated ? 'Redeemed' : 'Pending'}
-                          </span>
-                          {item.assigned_email ? (
-                            <span className="badge">Email reserved</span>
-                          ) : null}
+                          <span className="badge">{item.activated ? 'Redeemed' : 'Pending'}</span>
+                          {item.assigned_email ? <span className="badge">Email reserved</span> : null}
+                          {item.bulk_batch_id ? <span className="badge">Batch scratch pool</span> : null}
                         </div>
 
                         <div className="mt-4 grid min-w-0 gap-1 text-sm leading-7 text-white/60">
@@ -1167,6 +1262,11 @@ export default function AdminQrCodesPanel({
                           {item.assigned_email ? (
                             <div className="break-all">
                               <strong>Reserved:</strong> {item.assigned_email}
+                            </div>
+                          ) : null}
+                          {item.bulk_batch_id ? (
+                            <div className="break-all">
+                              <strong>Batch:</strong> {formatBatchId(item.bulk_batch_id)}
                             </div>
                           ) : null}
                         </div>
@@ -1239,8 +1339,18 @@ export default function AdminQrCodesPanel({
                             <strong>Assigned Email:</strong> {item.assigned_email || 'None'}
                           </div>
                           <div className="break-all">
+                            <strong>Bulk Batch ID:</strong> {item.bulk_batch_id || 'None'}
+                          </div>
+                          <div className="break-all">
                             <strong>Public URL:</strong> {window.location.origin}/p/{item.code}
                           </div>
+                          {item.bulk_batch_id ? (
+                            <div className="rounded-[16px] border border-[rgba(94,207,207,0.12)] bg-[rgba(94,207,207,0.06)] p-3 text-white/72">
+                              Batch mode is enabled for this QR. Any unused scratch code from this
+                              same batch can activate any unactivated QR code in this same batch,
+                              while assignment restrictions still apply.
+                            </div>
+                          ) : null}
                         </div>
 
                         <div className="grid min-w-0 gap-3">

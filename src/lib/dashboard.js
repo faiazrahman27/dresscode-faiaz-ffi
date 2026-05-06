@@ -25,6 +25,12 @@ const LIMITS = {
   bulkQrCount: 500,
 }
 
+const CONTROL_CHARS_PATTERN = new RegExp('[\\x00-\\x1F\\x7F]', 'g')
+const MULTILINE_CONTROL_CHARS_PATTERN = new RegExp(
+  '[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]',
+  'g',
+)
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -121,7 +127,7 @@ function rejectUnexpectedFields(payload, allowedFields, label = 'payload') {
 }
 
 function sanitizeControlChars(value) {
-  return String(value || '').replace(/[\u0000-\u001F\u007F]/g, '')
+  return String(value || '').replace(CONTROL_CHARS_PATTERN, '')
 }
 
 function sanitizeLiveText(value, maxLength) {
@@ -134,7 +140,7 @@ function sanitizeSingleLineText(value, maxLength) {
 
 function sanitizeMultilineText(value, maxLength) {
   return String(value || '')
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(MULTILINE_CONTROL_CHARS_PATTERN, '')
     .replace(/[<>]/g, '')
     .replace(/\r\n/g, '\n')
     .replace(/\n{8,}/g, '\n\n\n\n\n\n\n')
@@ -209,6 +215,38 @@ function sanitizeRequiredUuid(value, fieldName) {
   return { value: safeValue, error: '' }
 }
 
+function createUuid() {
+  const cryptoApi = typeof crypto !== 'undefined' ? crypto : null
+
+  if (cryptoApi?.randomUUID) {
+    return cryptoApi.randomUUID()
+  }
+
+  if (cryptoApi?.getRandomValues) {
+    const bytes = new Uint8Array(16)
+    cryptoApi.getRandomValues(bytes)
+
+    bytes[6] = (bytes[6] & 0x0f) | 0x40
+    bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+
+    return [
+      hex.slice(0, 8),
+      hex.slice(8, 12),
+      hex.slice(12, 16),
+      hex.slice(16, 20),
+      hex.slice(20),
+    ].join('-')
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16)
+    const value = char === 'x' ? random : (random & 0x3) | 0x8
+    return value.toString(16)
+  })
+}
+
 export function normalizeAssignedEmail(email) {
   const normalized = String(email || '').trim().toLowerCase().slice(0, LIMITS.email)
   return normalized || null
@@ -262,7 +300,10 @@ function sanitizeShopCategory(category) {
 }
 
 function sanitizeCurrency(currency) {
-  const normalized = sanitizeSingleLineText(currency || 'EUR', LIMITS.shopProductCurrency).toUpperCase()
+  const normalized = sanitizeSingleLineText(
+    currency || 'EUR',
+    LIMITS.shopProductCurrency,
+  ).toUpperCase()
 
   if (!CURRENCY_PATTERN.test(normalized)) {
     return { value: '', error: 'Currency must be a valid 3-letter code like EUR or USD.' }
@@ -361,23 +402,29 @@ function sanitizeProfileUpdates(updates) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'avatar_url')) {
     const avatarUrl = sanitizeUrl(updates.avatar_url)
+
     if (hasUnsafeProtocol(avatarUrl)) {
       return { payload: null, error: 'Avatar URL uses an unsafe protocol.' }
     }
+
     payload.avatar_url = avatarUrl || null
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'website')) {
     const website = sanitizeUrl(updates.website)
+
     if (hasUnsafeProtocol(website)) {
       return { payload: null, error: 'Website URL uses an unsafe protocol.' }
     }
+
     payload.website = website || null
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'accent_color')) {
     const { value, error } = sanitizeHexColor(updates.accent_color)
+
     if (error) return { payload: null, error }
+
     payload.accent_color = value
   }
 
@@ -408,6 +455,7 @@ function sanitizeTemplateUpdates(updates) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'page_data')) {
     const { value, error } = validatePageData(updates.page_data)
+
     if (error) return { payload: null, error }
 
     payload.page_data = value
@@ -424,13 +472,17 @@ function sanitizeQrUpdates(updates) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'code')) {
     const { value, error } = validateQrCode(updates.code)
+
     if (error) return { payload: null, error }
+
     payload.code = value
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'scratch_code')) {
     const { value, error } = validateScratchCode(updates.scratch_code)
+
     if (error) return { payload: null, error }
+
     payload.scratch_code = value
   }
 
@@ -440,25 +492,33 @@ function sanitizeQrUpdates(updates) {
 
   if (Object.prototype.hasOwnProperty.call(updates, 'code_type')) {
     const { value, error } = sanitizeCodeType(updates.code_type)
+
     if (error) return { payload: null, error }
+
     payload.code_type = value
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'template_id')) {
     const { value, error } = sanitizeNullableUuid(updates.template_id, 'Template ID')
+
     if (error) return { payload: null, error }
+
     payload.template_id = value
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'assigned_email')) {
     const { value, error } = validateAssignedEmail(updates.assigned_email, 'Assigned email')
+
     if (error) return { payload: null, error }
+
     payload.assigned_email = value
   }
 
   if (Object.prototype.hasOwnProperty.call(updates, 'assigned_to')) {
     const { value, error } = sanitizeNullableUuid(updates.assigned_to, 'Assigned user ID')
+
     if (error) return { payload: null, error }
+
     payload.assigned_to = value
   }
 
@@ -519,7 +579,9 @@ function sanitizeArticlePayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'author_id')) {
     const { value, error } = sanitizeRequiredUuid(input.author_id, 'Author ID')
+
     if (error) return { payload: null, error }
+
     payload.author_id = value
   }
 
@@ -534,7 +596,9 @@ function sanitizeShopProductPayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'slug')) {
     const { value, error } = sanitizeSlug(input.slug, 'Product slug')
+
     if (error) return { payload: null, error }
+
     payload.slug = value
   } else if (!partial) {
     return { payload: null, error: 'Product slug is required.' }
@@ -554,7 +618,9 @@ function sanitizeShopProductPayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'category')) {
     const { value, error } = sanitizeShopCategory(input.category)
+
     if (error) return { payload: null, error }
+
     payload.category = value
   } else if (!partial) {
     payload.category = 'qr_product'
@@ -585,7 +651,9 @@ function sanitizeShopProductPayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'currency')) {
     const { value, error } = sanitizeCurrency(input.currency)
+
     if (error) return { payload: null, error }
+
     payload.currency = value
   } else if (!partial) {
     payload.currency = 'EUR'
@@ -593,7 +661,9 @@ function sanitizeShopProductPayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'code_type')) {
     const { value, error } = sanitizeCodeType(input.code_type)
+
     if (error) return { payload: null, error }
+
     payload.code_type = value
   } else if (!partial) {
     payload.code_type = 'open'
@@ -601,7 +671,9 @@ function sanitizeShopProductPayload(input, { partial = false } = {}) {
 
   if (Object.prototype.hasOwnProperty.call(input, 'template_id')) {
     const { value, error } = sanitizeNullableUuid(input.template_id, 'Template ID')
+
     if (error) return { payload: null, error }
+
     payload.template_id = value
   }
 
@@ -777,6 +849,7 @@ export async function createPendingAssignment({
   created_by,
 }) {
   const { value: normalizedEmail, error: emailError } = validateAssignedEmail(email)
+
   if (emailError || !normalizedEmail) {
     return { data: null, error: makeError(emailError || 'Email is required.') }
   }
@@ -1058,6 +1131,7 @@ export async function createQrCode({
     created_by: safeCreatedBy,
     activated: false,
     is_active: true,
+    bulk_batch_id: null,
   }
 
   const { data, error } = await supabase
@@ -1107,6 +1181,7 @@ export async function createBulkQrCodes({
   if (createdByError) return { data: null, error: makeError(createdByError) }
 
   const safeLabelPrefix = sanitizeSingleLineText(labelPrefix, LIMITS.label)
+  const bulkBatchId = createUuid()
 
   const rows = Array.from({ length: safeCount }, (_, index) => ({
     code: generatePublicCode(prefix),
@@ -1118,6 +1193,7 @@ export async function createBulkQrCodes({
     created_by: safeCreatedBy,
     activated: false,
     is_active: true,
+    bulk_batch_id: bulkBatchId,
   }))
 
   const { data, error } = await supabase.from('qr_codes').insert(rows).select()
