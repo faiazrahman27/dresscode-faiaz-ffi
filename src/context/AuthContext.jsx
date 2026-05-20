@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -12,10 +12,15 @@ function getSafeAuthErrorMessage(error) {
   return error.message || 'Authentication request failed.'
 }
 
+function isEmailConfirmed(user) {
+  return Boolean(user?.email_confirmed_at || user?.confirmed_at)
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const welcomeEmailAttemptsRef = useRef(new Set())
 
   async function fetchProfile(userId, email = null) {
     if (!userId) {
@@ -64,6 +69,51 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function maybeSendWelcomeEmail(currentUser, currentProfile = null) {
+    if (!currentUser?.id || !isEmailConfirmed(currentUser)) {
+      return
+    }
+
+    if (currentProfile?.welcome_email_sent_at) {
+      return
+    }
+
+    if (welcomeEmailAttemptsRef.current.has(currentUser.id)) {
+      return
+    }
+
+    welcomeEmailAttemptsRef.current.add(currentUser.id)
+
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
+
+      if (sessionError || !session?.access_token) {
+        return
+      }
+
+      const { data, error } = await supabase.functions.invoke('send-welcome-email', {
+        body: {},
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (error) {
+        console.warn('Could not send welcome email:', getSafeAuthErrorMessage(error))
+        return
+      }
+
+      if (data?.sent) {
+        await fetchProfile(currentUser.id, currentUser.email)
+      }
+    } catch {
+      console.warn('Unexpected welcome email error.')
+    }
+  }
+
   async function refreshProfile() {
     try {
       const {
@@ -76,7 +126,10 @@ export function AuthProvider({ children }) {
         return null
       }
 
-      return await fetchProfile(user.id, user.email)
+      const refreshedProfile = await fetchProfile(user.id, user.email)
+      await maybeSendWelcomeEmail(user, refreshedProfile)
+
+      return refreshedProfile
     } catch {
       console.warn('Could not refresh profile.')
       setProfile(null)
@@ -110,7 +163,8 @@ export function AuthProvider({ children }) {
         setUser(currentUser)
 
         if (currentUser) {
-          await fetchProfile(currentUser.id, currentUser.email)
+          const currentProfile = await fetchProfile(currentUser.id, currentUser.email)
+          await maybeSendWelcomeEmail(currentUser, currentProfile)
         } else {
           setProfile(null)
         }
@@ -137,7 +191,9 @@ export function AuthProvider({ children }) {
       setUser(currentUser)
 
       if (currentUser) {
-        fetchProfile(currentUser.id, currentUser.email)
+        fetchProfile(currentUser.id, currentUser.email).then((currentProfile) => {
+          maybeSendWelcomeEmail(currentUser, currentProfile)
+        })
       } else {
         setProfile(null)
       }
