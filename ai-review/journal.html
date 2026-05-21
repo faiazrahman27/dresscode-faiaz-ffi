@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="Static AI review export of the Dresscode Journal page. This page is for UX and content analysis only."
+    />
+    <title>Journal — Dresscode Static Review</title>
+
+    <style>
+      :root {
+        --bg: #071515;
+        --border: rgba(94, 207, 207, 0.18);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.66);
+        --soft: rgba(255, 255, 255, 0.48);
+        --accent: #5ecfcf;
+        --max: 1240px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 12% 8%, rgba(94, 207, 207, 0.16), transparent 32rem),
+          radial-gradient(circle at 88% 18%, rgba(94, 207, 207, 0.1), transparent 30rem),
+          radial-gradient(circle at 70% 85%, rgba(94, 207, 207, 0.07), transparent 30rem),
+          linear-gradient(180deg, #061010 0%, #071515 48%, #091818 100%);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      .review-banner {
+        border-bottom: 1px solid rgba(94, 207, 207, 0.18);
+        background: rgba(0, 0, 0, 0.22);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .review-banner-inner {
+        width: min(var(--max), calc(100% - 32px));
+        margin: 0 auto;
+        padding: 0.75rem 0;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(18px);
+        background: rgba(7, 21, 21, 0.82);
+        border-bottom: 1px solid rgba(94, 207, 207, 0.14);
+      }
+
+      .nav {
+        width: min(var(--max), calc(100% - 32px));
+        margin: 0 auto;
+        min-height: 82px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
+      }
+
+      .brand-mark {
+        width: 42px;
+        height: 42px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background:
+          linear-gradient(135deg, rgba(94, 207, 207, 0.24), rgba(255, 255, 255, 0.04)),
+          rgba(255, 255, 255, 0.04);
+        box-shadow: 0 0 28px rgba(94, 207, 207, 0.18);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        font-weight: 900;
+      }
+
+      .brand-title {
+        display: block;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        font-size: 1.34rem;
+        line-height: 1;
+      }
+
+      .brand-subtitle {
+        display: block;
+        margin-top: 0.2rem;
+        color: var(--soft);
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+      }
+
+      .nav-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .nav-center a {
+        padding: 0.5rem 0.62rem;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+
+      .nav-center a:hover,
+      .nav-center a[aria-current="page"] {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .nav-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.65rem;
+        flex-shrink: 0;
+      }
+
+      .mobile-nav-note {
+        display: none;
+      }
+
+      .container {
+        width: min(var(--max), calc(100% - 32px));
+        margin: 0 auto;
+      }
+
+      .page {
+        padding: 3rem 0 5rem;
+      }
+
+      .eyebrow {
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin-bottom: 1rem;
+        font-size: clamp(2.75rem, 5.5vw, 5rem);
+        line-height: 0.98;
+        letter-spacing: -0.07em;
+      }
+
+      h2 {
+        margin-bottom: 0.8rem;
+        font-size: clamp(1.8rem, 3.2vw, 3rem);
+        line-height: 1;
+        letter-spacing: -0.055em;
+      }
+
+      h3 {
+        margin-bottom: 0.65rem;
+        font-size: 1.45rem;
+        line-height: 1.12;
+        letter-spacing: -0.04em;
+      }
+
+      .lead,
+      .muted {
+        color: var(--muted);
+      }
+
+      .lead {
+        font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+        max-width: 780px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 0.78rem 1.12rem;
+        border-radius: 999px;
+        font-weight: 800;
+        border: 1px solid var(--border);
+        font-size: 0.94rem;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #061010;
+        box-shadow: 0 0 34px rgba(94, 207, 207, 0.23);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.045);
+        color: var(--text);
+      }
+
+      .surface-card,
+      .glass-card {
+        border: 1px solid var(--border);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035)),
+          rgba(255, 255, 255, 0.03);
+        border-radius: 28px;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+      }
+
+      .hero-card {
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+        padding: 2rem;
+      }
+
+      .static-warning {
+        margin-bottom: 2rem;
+        border: 1px solid rgba(94, 207, 207, 0.16);
+        border-radius: 20px;
+        background: rgba(94, 207, 207, 0.07);
+        color: var(--muted);
+        padding: 1rem;
+        font-size: 0.94rem;
+      }
+
+      .status-card {
+        padding: 2rem;
+      }
+
+      .article-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+      }
+
+      .article-card {
+        position: relative;
+        overflow: hidden;
+        padding: 1.5rem;
+      }
+
+      .article-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        border-radius: 999px;
+        border: 1px solid rgba(94, 207, 207, 0.18);
+        background: rgba(94, 207, 207, 0.08);
+        color: var(--accent);
+        padding: 0.3rem 0.75rem;
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+
+      .article-date,
+      .read-time {
+        color: var(--soft);
+        font-size: 0.9rem;
+      }
+
+      .article-card p {
+        color: var(--muted);
+      }
+
+      .content-shell {
+        margin-top: 1rem;
+        border: 1px solid rgba(94, 207, 207, 0.12);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 1rem;
+      }
+
+      .content-shell p {
+        margin-bottom: 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .site-footer {
+        position: relative;
+        overflow: hidden;
+        padding: 3.5rem 0;
+        border-top: 1px solid rgba(94, 207, 207, 0.16);
+        background:
+          radial-gradient(circle at 15% 15%, rgba(94, 207, 207, 0.13), transparent 28rem),
+          radial-gradient(circle at 85% 35%, rgba(94, 207, 207, 0.08), transparent 24rem),
+          rgba(0, 0, 0, 0.18);
+      }
+
+      .footer-panel {
+        border: 1px solid rgba(94, 207, 207, 0.15);
+        border-radius: 32px;
+        padding: 2rem;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.032)),
+          rgba(255, 255, 255, 0.025);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
+      }
+
+      .footer-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr 0.8fr;
+        gap: 2.5rem;
+      }
+
+      .footer-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+      }
+
+      .footer-brand-mark {
+        width: 46px;
+        height: 46px;
+        border-radius: 18px;
+        border: 1px solid rgba(94, 207, 207, 0.22);
+        background:
+          linear-gradient(135deg, rgba(94, 207, 207, 0.22), rgba(255, 255, 255, 0.04)),
+          rgba(255, 255, 255, 0.035);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        font-weight: 900;
+      }
+
+      .footer-brand-title {
+        font-size: 1.55rem;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        line-height: 1;
+      }
+
+      .footer-brand-subtitle {
+        color: var(--soft);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-top: 0.32rem;
+      }
+
+      .footer-copy {
+        max-width: 430px;
+        margin: 1.25rem 0 0;
+        color: var(--muted);
+        font-size: 0.94rem;
+      }
+
+      .footer-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-top: 1.35rem;
+      }
+
+      .footer-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0.35rem 0.72rem;
+        border-radius: 999px;
+        border: 1px solid rgba(94, 207, 207, 0.15);
+        background: rgba(255, 255, 255, 0.035);
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+
+      .footer-heading {
+        margin-bottom: 1rem;
+        color: var(--text);
+        font-size: 0.84rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-weight: 900;
+      }
+
+      .footer-links {
+        display: grid;
+        gap: 0.65rem;
+      }
+
+      .footer-link {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .footer-link:hover {
+        color: var(--accent);
+      }
+
+      .divider {
+        height: 1px;
+        margin: 2.5rem 0;
+        background: linear-gradient(90deg, transparent, rgba(94, 207, 207, 0.2), transparent);
+      }
+
+      .footer-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        color: var(--soft);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 1080px) {
+        .nav {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 1rem 0;
+        }
+
+        .nav-center {
+          justify-content: flex-start;
+          flex-wrap: wrap;
+          width: 100%;
+        }
+
+        .nav-actions {
+          justify-content: flex-start;
+          width: 100%;
+        }
+
+        .mobile-nav-note {
+          display: block;
+          color: var(--soft);
+          font-size: 0.84rem;
+          padding-bottom: 0.35rem;
+        }
+      }
+
+      @media (max-width: 980px) {
+        .article-grid,
+        .footer-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          padding-top: 1rem;
+        }
+
+        h1 {
+          font-size: clamp(2.8rem, 16vw, 4.2rem);
+        }
+
+        .hero-card,
+        .status-card,
+        .article-card,
+        .footer-panel {
+          padding: 1.25rem;
+          border-radius: 24px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="review-banner">
+      <div class="review-banner-inner">
+        Static AI/browser review export. This page is a non-functional content snapshot of the Dresscode Journal page.
+      </div>
+    </div>
+
+    <header class="site-header">
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="index.html" class="brand" aria-label="Dresscode homepage">
+          <span class="brand-mark" aria-hidden="true">D</span>
+          <span>
+            <span class="brand-title">Dresscode</span>
+            <span class="brand-subtitle">wearable media</span>
+          </span>
+        </a>
+
+        <div class="nav-center" aria-label="Main site links">
+          <a href="how-it-works.html">How it Works</a>
+          <a href="use-cases.html">Use Cases</a>
+          <a href="solutions.html">Solutions</a>
+          <a href="shop.html">Shop</a>
+          <a href="journal.html" aria-current="page">Journal</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+        </div>
+
+        <div class="nav-actions" aria-label="Account actions">
+          <a class="btn btn-secondary" href="#review-only">Sign In</a>
+          <a class="btn btn-primary" href="#review-only">Get Started</a>
+        </div>
+
+        <div class="mobile-nav-note">
+          Static review export: mobile menu animations are intentionally not included.
+        </div>
+      </nav>
+    </header>
+
+    <main class="page">
+      <div class="container">
+        <section class="surface-card hero-card" aria-labelledby="journal-title">
+          <div class="eyebrow">Dresscode Journal</div>
+          <h1 id="journal-title">Stories, drops, ideas, and culture</h1>
+          <p class="lead">
+            Published insights from the Dresscode platform. Explore stories,
+            announcements, branded narratives, and editorial content.
+          </p>
+        </section>
+
+        <div class="static-warning" id="review-only">
+          Static review note: the live Journal page loads published articles from the dashboard.
+          This export does not call Supabase, does not fetch articles, and does not include private
+          dashboard content. The sample cards below exist only to show the readable journal
+          structure for UX/content review.
+        </div>
+
+        <section class="surface-card status-card" aria-labelledby="empty-state-title">
+          <h2 id="empty-state-title">No published articles yet</h2>
+          <p class="muted">
+            Articles will appear here once they are published from the dashboard.
+          </p>
+        </section>
+
+        <section style="margin-top: 2rem;" aria-labelledby="sample-articles-title">
+          <div class="eyebrow">Sample article layout</div>
+          <h2 id="sample-articles-title">Readable article-card structure</h2>
+
+          <div class="article-grid" style="margin-top: 1.25rem;">
+            <article class="surface-card article-card">
+              <div class="article-meta">
+                <span class="badge">Platform</span>
+                <span class="article-date">Static review date</span>
+              </div>
+
+              <h3>How physical products become digital identity touchpoints</h3>
+
+              <p>
+                A sample excerpt showing how a Dresscode journal article may introduce a topic,
+                campaign, drop, or platform update.
+              </p>
+
+              <div class="read-time">Read article</div>
+
+              <div class="content-shell">
+                <p>
+                  Sample body preview. In the live app, this area displays published article
+                  content from the dashboard.
+                </p>
+              </div>
+            </article>
+
+            <article class="surface-card article-card">
+              <div class="article-meta">
+                <span class="badge">Drops</span>
+                <span class="article-date">Static review date</span>
+              </div>
+
+              <h3>Using QR identity for product drops and collectibles</h3>
+
+              <p>
+                A sample excerpt for branded launches, limited products, collectibles, and
+                activation-driven storytelling.
+              </p>
+
+              <div class="read-time">Read article</div>
+
+              <div class="content-shell">
+                <p>
+                  Sample body preview. Real editorial content is intentionally not fetched in this
+                  static export.
+                </p>
+              </div>
+            </article>
+
+            <article class="surface-card article-card">
+              <div class="article-meta">
+                <span class="badge">Culture</span>
+                <span class="article-date">Static review date</span>
+              </div>
+
+              <h3>Wearable media and the next layer of public presence</h3>
+
+              <p>
+                A sample excerpt showing the journal’s role in explaining product culture, identity,
+                ownership, and physical-to-digital interaction.
+              </p>
+
+              <div class="read-time">Read article</div>
+
+              <div class="content-shell">
+                <p>
+                  Sample body preview. This page is only a readable snapshot for AI/browser
+                  analysis.
+                </p>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-panel">
+          <div class="footer-grid">
+            <div>
+              <a href="index.html" class="footer-brand" aria-label="Dresscode homepage">
+                <div class="footer-brand-mark" aria-hidden="true">D</div>
+
+                <div>
+                  <div class="footer-brand-title">Dresscode</div>
+                  <div class="footer-brand-subtitle">wearable media infrastructure</div>
+                </div>
+              </a>
+
+              <p class="footer-copy">
+                A wearable media infrastructure platform where every garment, object,
+                or collectible can unlock a dynamic digital experience.
+              </p>
+
+              <div class="footer-chip-row" aria-label="Footer topic tags">
+                <span class="footer-chip">Profiles</span>
+                <span class="footer-chip">Activation</span>
+                <span class="footer-chip">Live Content</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="footer-heading">Platform</div>
+
+              <div class="footer-links">
+                <a href="how-it-works.html" class="footer-link">How it Works</a>
+                <a href="use-cases.html" class="footer-link">Use Cases</a>
+                <a href="solutions.html" class="footer-link">Solutions</a>
+                <a href="journal.html" class="footer-link">Journal</a>
+              </div>
+            </div>
+
+            <div>
+              <div class="footer-heading">Company</div>
+
+              <div class="footer-links">
+                <a href="about.html" class="footer-link">About</a>
+                <a href="contact.html" class="footer-link">Contact</a>
+                <a href="#review-only" class="footer-link">Portal</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="footer-bottom">
+            <span>© Dresscode 2026. All rights reserved.</span>
+            <span>Wearable media · profiles · activation · live content</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

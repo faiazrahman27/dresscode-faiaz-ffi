@@ -19,7 +19,7 @@ function getCorsHeaders(req: Request) {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Vary': 'Origin',
+    Vary: 'Origin',
   }
 }
 
@@ -225,7 +225,7 @@ async function sendWelcomeEmail({
   return payload
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   try {
     if (req.method === 'OPTIONS') {
       return new Response('ok', {
@@ -280,8 +280,12 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('send-welcome-email error:', error)
 
-    return jsonResponse(req, {
-      error: 'Could not process welcome email.',
-    }, 500)
+    return jsonResponse(
+      req,
+      {
+        error: 'Could not process welcome email.',
+      },
+      500,
+    )
   }
 })
