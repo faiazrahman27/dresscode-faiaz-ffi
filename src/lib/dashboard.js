@@ -282,17 +282,23 @@ function applyAdminQrFilters(query, { search = '', filter = 'all' } = {}) {
 
   if (safeSearch) {
     const pattern = `%${safeSearch}%`
-    nextQuery = nextQuery.or(
-      [
-        `code.ilike.${pattern}`,
-        `scratch_code.ilike.${pattern}`,
-        `label.ilike.${pattern}`,
-        `code_type.ilike.${pattern}`,
-        `template_id.ilike.${pattern}`,
-        `assigned_email.ilike.${pattern}`,
-        `bulk_batch_id.ilike.${pattern}`,
-      ].join(','),
-    )
+    const searchFilters = [
+      `code.ilike.${pattern}`,
+      `scratch_code.ilike.${pattern}`,
+      `label.ilike.${pattern}`,
+      `code_type.ilike.${pattern}`,
+      `assigned_email.ilike.${pattern}`,
+    ]
+
+    if (UUID_PATTERN.test(safeSearch)) {
+      searchFilters.push(
+        `id.eq.${safeSearch}`,
+        `template_id.eq.${safeSearch}`,
+        `bulk_batch_id.eq.${safeSearch}`,
+      )
+    }
+
+    nextQuery = nextQuery.or(searchFilters.join(','))
   }
 
   if (safeFilter === 'pending') nextQuery = nextQuery.eq('activated', false)
