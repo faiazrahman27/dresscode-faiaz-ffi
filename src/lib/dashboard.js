@@ -44,7 +44,6 @@ const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/
 const SAFE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const CURRENCY_PATTERN = /^[A-Z]{3}$/
 
-const VALID_ROLES = new Set(['user', 'journalist', 'admin'])
 const VALID_CODE_TYPES = new Set(['open', 'locked'])
 const VALID_SHOP_CATEGORIES = new Set([
   'qr_product',
@@ -288,9 +287,58 @@ function clampAdminPageSize(value, fallback = 20) {
 
 function sanitizeAdminSearch(value) {
   return sanitizeSingleLineText(value, LIMITS.adminSearch)
-    .replace(/[^A-Za-z0-9@._ -]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^A-Za-z0-9_-]/g, '')
     .trim()
+}
+
+function applyAdminQrFilters(query, { search = '', filter = 'all' } = {}) {
+  const safeSearch = sanitizeAdminSearch(search)
+  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(filter) ? filter : 'all'
+
+  let nextQuery = query
+
+  if (safeSearch) {
+    nextQuery = nextQuery.ilike('code', `%${safeSearch}%`)
+  }
+
+  if (safeFilter === 'pending') nextQuery = nextQuery.eq('activated', false)
+  if (safeFilter === 'redeemed') nextQuery = nextQuery.eq('activated', true)
+  if (safeFilter === 'open') nextQuery = nextQuery.eq('code_type', 'open')
+  if (safeFilter === 'locked') nextQuery = nextQuery.eq('code_type', 'locked')
+  if (safeFilter === 'templated') nextQuery = nextQuery.not('template_id', 'is', null)
+  if (safeFilter === 'batched') nextQuery = nextQuery.not('bulk_batch_id', 'is', null)
+
+  return nextQuery
+}
+
+function applyAdminQrSort(query, sortBy = 'created_desc') {
+  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(sortBy) ? sortBy : 'created_desc'
+
+  if (safeSortBy === 'created_asc') {
+    return query.order('created_at', { ascending: true })
+  }
+
+  if (safeSortBy === 'label_asc') {
+    return query
+      .order('label', { ascending: true, nullsFirst: false })
+      .order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'label_desc') {
+    return query
+      .order('label', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'code_asc') {
+    return query.order('code', { ascending: true }).order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'code_desc') {
+    return query.order('code', { ascending: false }).order('created_at', { ascending: false })
+  }
+
+  return query.order('created_at', { ascending: false })
 }
 
 function validateAssignedEmail(email, fieldName = 'Email') {
@@ -302,16 +350,6 @@ function validateAssignedEmail(email, fieldName = 'Email') {
 
   if (!EMAIL_PATTERN.test(normalized)) {
     return { value: null, error: `${fieldName} must be a valid email address.` }
-  }
-
-  return { value: normalized, error: '' }
-}
-
-function sanitizeRole(role) {
-  const normalized = String(role || '').trim().toLowerCase()
-
-  if (!VALID_ROLES.has(normalized)) {
-    return { value: '', error: 'Role must be user, journalist, or admin.' }
   }
 
   return { value: normalized, error: '' }
@@ -845,127 +883,22 @@ export async function updateMyProfile(userId, updates) {
   return { data, error }
 }
 
-export async function getAllUsers() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  return { data, error }
-}
-
-export async function updateUserRole(userId, role) {
-  const { value: safeUserId, error: userIdError } = sanitizeRequiredUuid(userId, 'User ID')
-  if (userIdError) return { data: null, error: makeError(userIdError) }
-
-  const { value: safeRole, error: roleError } = sanitizeRole(role)
-  if (roleError) return { data: null, error: makeError(roleError) }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .update({ role: safeRole })
-    .eq('id', safeUserId)
-    .select()
-    .single()
-
-  return { data, error }
-}
-
-export async function getPendingAssignments() {
-  const { data, error } = await supabase
-    .from('pending_assignments')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  return { data, error }
-}
-
-export async function createPendingAssignment({
-  email,
-  role,
-  qr_code_id = null,
-  created_by,
-}) {
-  const { value: normalizedEmail, error: emailError } = validateAssignedEmail(email)
-
-  if (emailError || !normalizedEmail) {
-    return { data: null, error: makeError(emailError || 'Email is required.') }
-  }
-
-  const { value: safeRole, error: roleError } = sanitizeRole(role)
-  if (roleError) return { data: null, error: makeError(roleError) }
-
-  const { value: safeQrCodeId, error: qrCodeError } = sanitizeNullableUuid(
-    qr_code_id,
-    'QR code ID',
-  )
-  if (qrCodeError) return { data: null, error: makeError(qrCodeError) }
-
-  const { value: safeCreatedBy, error: createdByError } = sanitizeRequiredUuid(
-    created_by,
-    'Created by user ID',
-  )
-  if (createdByError) return { data: null, error: makeError(createdByError) }
-
-  const { data, error } = await supabase
-    .from('pending_assignments')
-    .insert({
-      email: normalizedEmail,
-      role: safeRole,
-      qr_code_id: safeQrCodeId,
-      created_by: safeCreatedBy,
-    })
-    .select()
-    .single()
-
-  return { data, error }
-}
-
-export async function deletePendingAssignment(id) {
-  const { value: safeId, error: idError } = sanitizeRequiredUuid(id, 'Pending assignment ID')
-  if (idError) return { error: makeError(idError) }
-
-  const { error } = await supabase.from('pending_assignments').delete().eq('id', safeId)
-
-  return { error }
-}
-
 export async function getAllQrCodes(options = {}) {
   const page = clampAdminPage(options.page)
   const pageSize = clampAdminPageSize(options.pageSize, 20)
-  const safeSearch = sanitizeAdminSearch(options.search)
-  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(options.filter) ? options.filter : 'all'
-  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(options.sortBy)
-    ? options.sortBy
-    : 'created_desc'
-  const offset = (page - 1) * pageSize
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
 
-  const { data, error } = await supabase.rpc('admin_search_qr_codes', {
-    p_search: safeSearch,
-    p_filter: safeFilter,
-    p_sort_by: safeSortBy,
-    p_limit: pageSize,
-    p_offset: offset,
-  })
+  let query = supabase.from('qr_codes').select('*', { count: 'exact' })
+  query = applyAdminQrFilters(query, options)
+  query = applyAdminQrSort(query, options.sortBy)
 
-  if (error) {
-    return {
-      data: null,
-      error,
-      count: 0,
-      page,
-      pageSize,
-    }
-  }
-
-  const rows = Array.isArray(data) ? data : []
-  const count = rows.length ? Number(rows[0].total_count) || 0 : 0
-  const cleanedRows = rows.map(({ total_count, ...row }) => row)
+  const { data, error, count } = await query.range(from, to)
 
   return {
-    data: cleanedRows,
-    error: null,
-    count,
+    data,
+    error,
+    count: Number(count) || 0,
     page,
     pageSize,
   }
@@ -973,38 +906,28 @@ export async function getAllQrCodes(options = {}) {
 
 export async function getAllQrCodesForExport(options = {}) {
   const pageSize = LIMITS.adminExportPageSize
-  const safeSearch = sanitizeAdminSearch(options.search)
-  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(options.filter) ? options.filter : 'all'
-  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(options.sortBy)
-    ? options.sortBy
-    : 'created_desc'
-
-  let offset = 0
+  let from = 0
   let rows = []
 
   while (true) {
-    const { data, error } = await supabase.rpc('admin_search_qr_codes', {
-      p_search: safeSearch,
-      p_filter: safeFilter,
-      p_sort_by: safeSortBy,
-      p_limit: pageSize,
-      p_offset: offset,
-    })
+    let query = supabase.from('qr_codes').select('*')
+    query = applyAdminQrFilters(query, options)
+    query = applyAdminQrSort(query, options.sortBy)
+
+    const { data, error } = await query.range(from, from + pageSize - 1)
 
     if (error) {
       return { data: null, error, count: rows.length }
     }
 
     const chunk = Array.isArray(data) ? data : []
-    const cleanedChunk = chunk.map(({ total_count, ...row }) => row)
-
-    rows = rows.concat(cleanedChunk)
+    rows = rows.concat(chunk)
 
     if (chunk.length < pageSize) {
       break
     }
 
-    offset += pageSize
+    from += pageSize
   }
 
   return {

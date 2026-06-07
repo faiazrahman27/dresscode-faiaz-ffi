@@ -41,7 +41,7 @@ const LIMITS = {
   label: 120,
   labelPrefix: 120,
   email: 254,
-  search: 180,
+  search: 80,
   bulkMin: 1,
   bulkMax: 500,
 }
@@ -103,7 +103,11 @@ function sanitizeCodeType(value) {
 }
 
 function sanitizeSearchValue(value) {
-  return sanitizeLiveText(value, LIMITS.search)
+  return String(value || '')
+    .replace(/\s+/g, '')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .toUpperCase()
+    .slice(0, LIMITS.search)
 }
 
 function isValidAssignedEmail(email) {
@@ -119,7 +123,6 @@ function isValidTemplateId(templateId, templates) {
 function safeCsvValue(value) {
   let normalized = stripControlCharacters(value ?? '', ' ')
 
-  // Prevent CSV formula injection when admin-exported CSV is opened in spreadsheet software.
   if (/^[=+\-@]/.test(normalized.trim())) {
     normalized = `'${normalized}`
   }
@@ -379,7 +382,7 @@ export default function AdminQrCodesPanel({
   useEffect(() => {
     const safeFilter = FILTER_OPTIONS.has(filter) ? filter : 'all'
     const safeSortBy = SORT_OPTIONS.has(sortBy) ? sortBy : 'created_desc'
-    const safeSearch = sanitizeSearchValue(search).trim()
+    const safeSearch = sanitizeSearchValue(search)
 
     onQueryChange?.({
       page: safePage,
@@ -643,7 +646,7 @@ export default function AdminQrCodesPanel({
 
     const safeFilter = FILTER_OPTIONS.has(filter) ? filter : 'all'
     const safeSortBy = SORT_OPTIONS.has(sortBy) ? sortBy : 'created_desc'
-    const safeSearch = sanitizeSearchValue(search).trim()
+    const safeSearch = sanitizeSearchValue(search)
 
     setExportingAll(true)
 
@@ -1105,7 +1108,7 @@ export default function AdminQrCodesPanel({
               value={search}
               maxLength={LIMITS.search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search by code, scratch, label, type, template, email, batch..."
+              placeholder="Search by QR code..."
             />
 
             <div className="flex flex-wrap gap-2">
