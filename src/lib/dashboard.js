@@ -107,6 +107,25 @@ const SHOP_PRODUCT_FIELDS = new Set([
   'sort_order',
 ])
 
+const FILTER_OPTIONS_ADMIN_QR = new Set([
+  'all',
+  'pending',
+  'redeemed',
+  'open',
+  'locked',
+  'templated',
+  'batched',
+])
+
+const SORT_OPTIONS_ADMIN_QR = new Set([
+  'created_desc',
+  'created_asc',
+  'label_asc',
+  'label_desc',
+  'code_asc',
+  'code_desc',
+])
+
 function makeError(message) {
   return new Error(message)
 }
@@ -273,88 +292,6 @@ function sanitizeAdminSearch(value) {
     .replace(/\s+/g, ' ')
     .trim()
 }
-
-function applyAdminQrFilters(query, { search = '', filter = 'all' } = {}) {
-  const safeSearch = sanitizeAdminSearch(search)
-  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(filter) ? filter : 'all'
-
-  let nextQuery = query
-
-  if (safeSearch) {
-    const pattern = `%${safeSearch}%`
-    const searchFilters = [
-      `code.ilike.${pattern}`,
-      `scratch_code.ilike.${pattern}`,
-      `label.ilike.${pattern}`,
-      `code_type.ilike.${pattern}`,
-      `assigned_email.ilike.${pattern}`,
-    ]
-
-    if (UUID_PATTERN.test(safeSearch)) {
-      searchFilters.push(
-        `id.eq.${safeSearch}`,
-        `template_id.eq.${safeSearch}`,
-        `bulk_batch_id.eq.${safeSearch}`,
-      )
-    }
-
-    nextQuery = nextQuery.or(searchFilters.join(','))
-  }
-
-  if (safeFilter === 'pending') nextQuery = nextQuery.eq('activated', false)
-  if (safeFilter === 'redeemed') nextQuery = nextQuery.eq('activated', true)
-  if (safeFilter === 'open') nextQuery = nextQuery.eq('code_type', 'open')
-  if (safeFilter === 'locked') nextQuery = nextQuery.eq('code_type', 'locked')
-  if (safeFilter === 'templated') nextQuery = nextQuery.not('template_id', 'is', null)
-  if (safeFilter === 'batched') nextQuery = nextQuery.not('bulk_batch_id', 'is', null)
-
-  return nextQuery
-}
-
-function applyAdminQrSort(query, sortBy = 'created_desc') {
-  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(sortBy) ? sortBy : 'created_desc'
-
-  if (safeSortBy === 'created_asc') {
-    return query.order('created_at', { ascending: true })
-  }
-
-  if (safeSortBy === 'label_asc') {
-    return query.order('label', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false })
-  }
-
-  if (safeSortBy === 'label_desc') {
-    return query.order('label', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })
-  }
-
-  if (safeSortBy === 'code_asc') {
-    return query.order('code', { ascending: true }).order('created_at', { ascending: false })
-  }
-
-  if (safeSortBy === 'code_desc') {
-    return query.order('code', { ascending: false }).order('created_at', { ascending: false })
-  }
-
-  return query.order('created_at', { ascending: false })
-}
-
-const FILTER_OPTIONS_ADMIN_QR = new Set([
-  'all',
-  'pending',
-  'redeemed',
-  'open',
-  'locked',
-  'templated',
-  'batched',
-])
-
-const SORT_OPTIONS_ADMIN_QR = new Set([
-  'created_desc',
-  'created_asc',
-  'label_asc',
-  'label_desc',
-  'code_asc',
-  'code_desc',
-])
 
 function validateAssignedEmail(email, fieldName = 'Email') {
   const normalized = normalizeAssignedEmail(email)
@@ -824,9 +761,6 @@ export async function getMyQrCodes(userId, email = '') {
     return { data: [], error: null }
   }
 
-  // Safe authenticated RPC.
-  // Does not return scratch_code or assigned_email.
-  // It returns safe booleans like assigned_to_current_email instead.
   const { data, error } = await supabase.rpc('get_my_qr_codes')
 
   if (error) {
@@ -997,55 +931,80 @@ export async function deletePendingAssignment(id) {
 }
 
 export async function getAllQrCodes(options = {}) {
-  // Admin-only dashboard call.
-  // Server-side range/count keeps the admin QR panel usable when the table grows.
   const page = clampAdminPage(options.page)
   const pageSize = clampAdminPageSize(options.pageSize, 20)
-  const from = (page - 1) * pageSize
-  const to = from + pageSize - 1
+  const safeSearch = sanitizeAdminSearch(options.search)
+  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(options.filter) ? options.filter : 'all'
+  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(options.sortBy)
+    ? options.sortBy
+    : 'created_desc'
+  const offset = (page - 1) * pageSize
 
-  let query = supabase.from('qr_codes').select('*', { count: 'exact' })
-  query = applyAdminQrFilters(query, options)
-  query = applyAdminQrSort(query, options.sortBy)
+  const { data, error } = await supabase.rpc('admin_search_qr_codes', {
+    p_search: safeSearch,
+    p_filter: safeFilter,
+    p_sort_by: safeSortBy,
+    p_limit: pageSize,
+    p_offset: offset,
+  })
 
-  const { data, error, count } = await query.range(from, to)
+  if (error) {
+    return {
+      data: null,
+      error,
+      count: 0,
+      page,
+      pageSize,
+    }
+  }
+
+  const rows = Array.isArray(data) ? data : []
+  const count = rows.length ? Number(rows[0].total_count) || 0 : 0
+  const cleanedRows = rows.map(({ total_count, ...row }) => row)
 
   return {
-    data,
-    error,
-    count: Number(count) || 0,
+    data: cleanedRows,
+    error: null,
+    count,
     page,
     pageSize,
   }
 }
 
 export async function getAllQrCodesForExport(options = {}) {
-  // Admin-only export call.
-  // UI pagination remains unchanged; this fetches every matching QR row in safe chunks
-  // so the CSV opened in Excel contains the full filtered result set, not only one page.
   const pageSize = LIMITS.adminExportPageSize
-  let from = 0
+  const safeSearch = sanitizeAdminSearch(options.search)
+  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(options.filter) ? options.filter : 'all'
+  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(options.sortBy)
+    ? options.sortBy
+    : 'created_desc'
+
+  let offset = 0
   let rows = []
 
   while (true) {
-    let query = supabase.from('qr_codes').select('*')
-    query = applyAdminQrFilters(query, options)
-    query = applyAdminQrSort(query, options.sortBy)
-
-    const { data, error } = await query.range(from, from + pageSize - 1)
+    const { data, error } = await supabase.rpc('admin_search_qr_codes', {
+      p_search: safeSearch,
+      p_filter: safeFilter,
+      p_sort_by: safeSortBy,
+      p_limit: pageSize,
+      p_offset: offset,
+    })
 
     if (error) {
       return { data: null, error, count: rows.length }
     }
 
     const chunk = Array.isArray(data) ? data : []
-    rows = rows.concat(chunk)
+    const cleanedChunk = chunk.map(({ total_count, ...row }) => row)
+
+    rows = rows.concat(cleanedChunk)
 
     if (chunk.length < pageSize) {
       break
     }
 
-    from += pageSize
+    offset += pageSize
   }
 
   return {
