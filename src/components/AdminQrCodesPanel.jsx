@@ -630,6 +630,13 @@ export default function AdminQrCodesPanel({
     }
   }
 
+  function handleSafeSortChange(value) {
+    if (SORT_OPTIONS.has(value)) {
+      setSortBy(value)
+      setPage(1)
+    }
+  }
+
   async function handleExportAllCsv() {
     setError('')
     setFeedback('')
@@ -1189,16 +1196,28 @@ export default function AdminQrCodesPanel({
 
             <div className="grid gap-3 lg:grid-cols-[1fr_1fr]">
               <select
-                className="field"
+                className="field bg-[#0f2424] text-white"
                 value={sortBy}
                 onChange={(e) => handleSafeSortChange(e.target.value)}
               >
-                <option value="created_desc">Newest First</option>
-                <option value="created_asc">Oldest First</option>
-                <option value="label_asc">Label A-Z</option>
-                <option value="label_desc">Label Z-A</option>
-                <option value="code_asc">Code A-Z</option>
-                <option value="code_desc">Code Z-A</option>
+                <option className="bg-[#0f2424] text-white" value="created_desc">
+                  Newest First
+                </option>
+                <option className="bg-[#0f2424] text-white" value="created_asc">
+                  Oldest First
+                </option>
+                <option className="bg-[#0f2424] text-white" value="label_asc">
+                  Label A-Z
+                </option>
+                <option className="bg-[#0f2424] text-white" value="label_desc">
+                  Label Z-A
+                </option>
+                <option className="bg-[#0f2424] text-white" value="code_asc">
+                  Code A-Z
+                </option>
+                <option className="bg-[#0f2424] text-white" value="code_desc">
+                  Code Z-A
+                </option>
               </select>
 
               <div className="flex items-center text-sm leading-6 text-white/52">
