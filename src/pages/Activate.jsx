@@ -110,6 +110,11 @@ export default function Activate() {
 
   const unassignedCode = !hasUserAssignment && !hasEmailAssignment
   const activationBlocked = assignedToDifferentUser || assignedToDifferentEmail
+  const activationBlockedMessage = assignedToDifferentEmail
+    ? 'This QR code is assigned to another email. Scratch-code entry is locked for this account. Please sign in with the email used for this assignment.'
+    : assignedToDifferentUser
+      ? 'This QR code is assigned to another account. Scratch-code entry is locked for this account.'
+      : ''
   const isOpenCode = qrCode?.code_type === 'open'
   const isLockedCode = qrCode?.code_type === 'locked'
 
@@ -414,6 +419,12 @@ export default function Activate() {
                   </div>
                 ) : null}
 
+                {activationBlockedMessage ? (
+                  <div className="activate-feedback activate-feedback-error mb-4">
+                    {activationBlockedMessage}
+                  </div>
+                ) : null}
+
                 <form onSubmit={handleActivate} className="space-y-5">
                   <div className="activate-input-shell">
                     <label className="mb-2 block text-sm font-medium">
@@ -426,7 +437,16 @@ export default function Activate() {
                       placeholder="XXXX-XXXX-XXXX"
                       className="field"
                       disabled={activationBlocked}
+                      aria-describedby={activationBlockedMessage ? 'activation-blocked-message' : undefined}
                     />
+                    {activationBlockedMessage ? (
+                      <div
+                        id="activation-blocked-message"
+                        className="mt-2 text-sm leading-6 text-[#ffb4b4]"
+                      >
+                        {activationBlockedMessage}
+                      </div>
+                    ) : null}
                   </div>
 
                   <button

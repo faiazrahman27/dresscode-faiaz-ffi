@@ -6,6 +6,7 @@ import {
   deleteQrCode,
   generatePublicCode,
   generateScratchCode,
+  getAllQrCodesForExport,
   normalizeAssignedEmail,
   updateQrCode,
 } from '../lib/dashboard'
@@ -135,7 +136,7 @@ function downloadDataUrl(dataUrl, filename) {
   document.body.removeChild(a)
 }
 
-function exportCsv(rows) {
+function exportCsv(rows, filename = 'dresscode-qr-codes.csv') {
   const headers = [
     'Code',
     'Scratch Code',
@@ -166,9 +167,9 @@ function exportCsv(rows) {
     .map((line) => line.map((value) => safeCsvValue(value)).join(','))
     .join('\n')
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
-  downloadDataUrl(url, 'dresscode-qr-codes.csv')
+  downloadDataUrl(url, filename)
   URL.revokeObjectURL(url)
 }
 
@@ -342,6 +343,7 @@ export default function AdminQrCodesPanel({
   const [page, setPage] = useState(1)
   const [expandedIds, setExpandedIds] = useState([])
   const [lastBulkCreated, setLastBulkCreated] = useState([])
+  const [exportingAll, setExportingAll] = useState(false)
   const canvasRef = useRef(null)
 
   const pageSize = 20
@@ -628,11 +630,41 @@ export default function AdminQrCodesPanel({
     }
   }
 
-  function handleSafeSortChange(value) {
-    if (SORT_OPTIONS.has(value)) {
-      setSortBy(value)
-      setPage(1)
+  async function handleExportAllCsv() {
+    setError('')
+    setFeedback('')
+
+    const safeFilter = FILTER_OPTIONS.has(filter) ? filter : 'all'
+    const safeSortBy = SORT_OPTIONS.has(sortBy) ? sortBy : 'created_desc'
+    const safeSearch = sanitizeSearchValue(search).trim()
+
+    setExportingAll(true)
+
+    const { data, error } = await getAllQrCodesForExport({
+      search: safeSearch,
+      filter: safeFilter,
+      sortBy: safeSortBy,
+    })
+
+    setExportingAll(false)
+
+    if (error) {
+      setError(error.message || 'Could not export QR codes.')
+      return
     }
+
+    const exportRows = Array.isArray(data) ? data : []
+
+    if (!exportRows.length) {
+      setFeedback('No QR codes match the current search/filter, so nothing was exported.')
+      return
+    }
+
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    exportCsv(exportRows, `dresscode-qr-codes-all-${dateStamp}.csv`)
+    setFeedback(
+      `Exported ${exportRows.length} QR code${exportRows.length === 1 ? '' : 's'} to CSV.`,
+    )
   }
 
   return (
@@ -1052,9 +1084,10 @@ export default function AdminQrCodesPanel({
             <button
               type="button"
               className="btn btn-secondary shrink-0"
-              onClick={() => exportCsv(visibleQrCodes)}
+              onClick={handleExportAllCsv}
+              disabled={exportingAll || loadingQrCodes}
             >
-              Export Current Page CSV
+              {exportingAll ? 'Exporting All...' : 'Export All CSV'}
             </button>
           </div>
 

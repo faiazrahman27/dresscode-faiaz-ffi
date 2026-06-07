@@ -25,6 +25,7 @@ const LIMITS = {
   bulkQrCount: 500,
   adminSearch: 180,
   adminPageSize: 100,
+  adminExportPageSize: 1000,
 }
 
 const CONTROL_CHARS_PATTERN = new RegExp('[\\x00-\\x1F\\x7F]', 'g')
@@ -1009,6 +1010,42 @@ export async function getAllQrCodes(options = {}) {
     count: Number(count) || 0,
     page,
     pageSize,
+  }
+}
+
+export async function getAllQrCodesForExport(options = {}) {
+  // Admin-only export call.
+  // UI pagination remains unchanged; this fetches every matching QR row in safe chunks
+  // so the CSV opened in Excel contains the full filtered result set, not only one page.
+  const pageSize = LIMITS.adminExportPageSize
+  let from = 0
+  let rows = []
+
+  while (true) {
+    let query = supabase.from('qr_codes').select('*')
+    query = applyAdminQrFilters(query, options)
+    query = applyAdminQrSort(query, options.sortBy)
+
+    const { data, error } = await query.range(from, from + pageSize - 1)
+
+    if (error) {
+      return { data: null, error, count: rows.length }
+    }
+
+    const chunk = Array.isArray(data) ? data : []
+    rows = rows.concat(chunk)
+
+    if (chunk.length < pageSize) {
+      break
+    }
+
+    from += pageSize
+  }
+
+  return {
+    data: rows,
+    error: null,
+    count: rows.length,
   }
 }
 
