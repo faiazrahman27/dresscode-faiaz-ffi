@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import {
   createBulkQrCodes,
@@ -303,6 +303,10 @@ function validateBulkQrForm(bulkForm, templates, currentUserId) {
 
 export default function AdminQrCodesPanel({
   qrCodes,
+  qrMeta,
+  qrCounts,
+  loadingQrCodes,
+  onQueryChange,
   templates,
   currentUserId,
   onCreated,
@@ -347,14 +351,15 @@ export default function AdminQrCodesPanel({
     [qrCodes, selectedQrId],
   )
 
-  const counts = useMemo(() => {
-    const all = qrCodes.length
-    const pending = qrCodes.filter((row) => !row.activated).length
-    const redeemed = qrCodes.filter((row) => row.activated).length
-    const batched = qrCodes.filter((row) => Boolean(row.bulk_batch_id)).length
-
-    return { all, pending, redeemed, batched }
-  }, [qrCodes])
+  const counts = useMemo(
+    () => ({
+      all: Number(qrCounts?.all) || 0,
+      pending: Number(qrCounts?.pending) || 0,
+      redeemed: Number(qrCounts?.redeemed) || 0,
+      batched: Number(qrCounts?.batched) || 0,
+    }),
+    [qrCounts],
+  )
 
   const selectedBatchCount = useMemo(() => {
     if (!selectedQr?.bulk_batch_id) return 0
@@ -362,77 +367,26 @@ export default function AdminQrCodesPanel({
     return qrCodes.filter((row) => row.bulk_batch_id === selectedQr.bulk_batch_id).length
   }, [qrCodes, selectedQr])
 
-  const filteredQrCodes = useMemo(() => {
-    const query = sanitizeSearchValue(search).trim().toLowerCase()
+  const visibleQrCodes = useMemo(() => (Array.isArray(qrCodes) ? qrCodes : []), [qrCodes])
+
+  const totalQrCount = Number(qrMeta?.count) || 0
+  const totalPages = Math.max(1, Math.ceil(totalQrCount / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const pagedQrCodes = visibleQrCodes
+
+  useEffect(() => {
     const safeFilter = FILTER_OPTIONS.has(filter) ? filter : 'all'
     const safeSortBy = SORT_OPTIONS.has(sortBy) ? sortBy : 'created_desc'
+    const safeSearch = sanitizeSearchValue(search).trim()
 
-    let rows = [...qrCodes]
-
-    if (query) {
-      rows = rows.filter((row) => {
-        const haystack = [
-          row.code,
-          row.scratch_code,
-          row.label,
-          row.code_type,
-          row.template_id,
-          row.assigned_email,
-          row.bulk_batch_id,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-
-        return haystack.includes(query)
-      })
-    }
-
-    if (safeFilter === 'pending') rows = rows.filter((row) => row.activated === false)
-    if (safeFilter === 'redeemed') rows = rows.filter((row) => row.activated === true)
-    if (safeFilter === 'open') rows = rows.filter((row) => row.code_type === 'open')
-    if (safeFilter === 'locked') rows = rows.filter((row) => row.code_type === 'locked')
-    if (safeFilter === 'templated') rows = rows.filter((row) => Boolean(row.template_id))
-    if (safeFilter === 'batched') rows = rows.filter((row) => Boolean(row.bulk_batch_id))
-
-    rows.sort((a, b) => {
-      if (safeSortBy === 'created_desc') {
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0)
-      }
-
-      if (safeSortBy === 'created_asc') {
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0)
-      }
-
-      if (safeSortBy === 'label_asc') {
-        return (a.label || a.code || '').localeCompare(b.label || b.code || '')
-      }
-
-      if (safeSortBy === 'label_desc') {
-        return (b.label || b.code || '').localeCompare(a.label || a.code || '')
-      }
-
-      if (safeSortBy === 'code_asc') {
-        return (a.code || '').localeCompare(b.code || '')
-      }
-
-      if (safeSortBy === 'code_desc') {
-        return (b.code || '').localeCompare(a.code || '')
-      }
-
-      return 0
+    onQueryChange?.({
+      page: safePage,
+      pageSize,
+      search: safeSearch,
+      filter: safeFilter,
+      sortBy: safeSortBy,
     })
-
-    return rows
-  }, [qrCodes, search, filter, sortBy])
-
-  const totalPages = Math.max(1, Math.ceil(filteredQrCodes.length / pageSize))
-  const safePage = Math.min(page, totalPages)
-
-  const pagedQrCodes = useMemo(() => {
-    const start = (safePage - 1) * pageSize
-    return filteredQrCodes.slice(start, start + pageSize)
-  }, [filteredQrCodes, safePage])
+  }, [filter, onQueryChange, safePage, search, sortBy])
 
   async function regenerateCode() {
     setForm((prev) => ({
@@ -1098,9 +1052,9 @@ export default function AdminQrCodesPanel({
             <button
               type="button"
               className="btn btn-secondary shrink-0"
-              onClick={() => exportCsv(filteredQrCodes)}
+              onClick={() => exportCsv(visibleQrCodes)}
             >
-              Export Filtered CSV
+              Export Current Page CSV
             </button>
           </div>
 
@@ -1215,7 +1169,7 @@ export default function AdminQrCodesPanel({
               </select>
 
               <div className="flex items-center text-sm leading-6 text-white/52">
-                Showing {pagedQrCodes.length} of {filteredQrCodes.length} matching codes
+                {loadingQrCodes ? 'Loading codes...' : `Showing ${pagedQrCodes.length} of ${totalQrCount} matching codes`}
               </div>
             </div>
           </div>

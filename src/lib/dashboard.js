@@ -23,6 +23,8 @@ const LIMITS = {
   url: 2048,
   pageDataJson: 250000,
   bulkQrCount: 500,
+  adminSearch: 180,
+  adminPageSize: 100,
 }
 
 const CONTROL_CHARS_PATTERN = new RegExp('[\\x00-\\x1F\\x7F]', 'g')
@@ -251,6 +253,101 @@ export function normalizeAssignedEmail(email) {
   const normalized = String(email || '').trim().toLowerCase().slice(0, LIMITS.email)
   return normalized || null
 }
+
+function clampAdminPage(value) {
+  const page = Number(value)
+  if (!Number.isInteger(page) || page < 1) return 1
+  return Math.min(page, 100000)
+}
+
+function clampAdminPageSize(value, fallback = 20) {
+  const pageSize = Number(value)
+  if (!Number.isInteger(pageSize)) return fallback
+  return Math.max(1, Math.min(LIMITS.adminPageSize, pageSize))
+}
+
+function sanitizeAdminSearch(value) {
+  return sanitizeSingleLineText(value, LIMITS.adminSearch)
+    .replace(/[^A-Za-z0-9@._ -]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function applyAdminQrFilters(query, { search = '', filter = 'all' } = {}) {
+  const safeSearch = sanitizeAdminSearch(search)
+  const safeFilter = FILTER_OPTIONS_ADMIN_QR.has(filter) ? filter : 'all'
+
+  let nextQuery = query
+
+  if (safeSearch) {
+    const pattern = `%${safeSearch}%`
+    nextQuery = nextQuery.or(
+      [
+        `code.ilike.${pattern}`,
+        `scratch_code.ilike.${pattern}`,
+        `label.ilike.${pattern}`,
+        `code_type.ilike.${pattern}`,
+        `template_id.ilike.${pattern}`,
+        `assigned_email.ilike.${pattern}`,
+        `bulk_batch_id.ilike.${pattern}`,
+      ].join(','),
+    )
+  }
+
+  if (safeFilter === 'pending') nextQuery = nextQuery.eq('activated', false)
+  if (safeFilter === 'redeemed') nextQuery = nextQuery.eq('activated', true)
+  if (safeFilter === 'open') nextQuery = nextQuery.eq('code_type', 'open')
+  if (safeFilter === 'locked') nextQuery = nextQuery.eq('code_type', 'locked')
+  if (safeFilter === 'templated') nextQuery = nextQuery.not('template_id', 'is', null)
+  if (safeFilter === 'batched') nextQuery = nextQuery.not('bulk_batch_id', 'is', null)
+
+  return nextQuery
+}
+
+function applyAdminQrSort(query, sortBy = 'created_desc') {
+  const safeSortBy = SORT_OPTIONS_ADMIN_QR.has(sortBy) ? sortBy : 'created_desc'
+
+  if (safeSortBy === 'created_asc') {
+    return query.order('created_at', { ascending: true })
+  }
+
+  if (safeSortBy === 'label_asc') {
+    return query.order('label', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'label_desc') {
+    return query.order('label', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'code_asc') {
+    return query.order('code', { ascending: true }).order('created_at', { ascending: false })
+  }
+
+  if (safeSortBy === 'code_desc') {
+    return query.order('code', { ascending: false }).order('created_at', { ascending: false })
+  }
+
+  return query.order('created_at', { ascending: false })
+}
+
+const FILTER_OPTIONS_ADMIN_QR = new Set([
+  'all',
+  'pending',
+  'redeemed',
+  'open',
+  'locked',
+  'templated',
+  'batched',
+])
+
+const SORT_OPTIONS_ADMIN_QR = new Set([
+  'created_desc',
+  'created_asc',
+  'label_asc',
+  'label_desc',
+  'code_asc',
+  'code_desc',
+])
 
 function validateAssignedEmail(email, fieldName = 'Email') {
   const normalized = normalizeAssignedEmail(email)
@@ -892,15 +989,61 @@ export async function deletePendingAssignment(id) {
   return { error }
 }
 
-export async function getAllQrCodes() {
+export async function getAllQrCodes(options = {}) {
   // Admin-only dashboard call.
-  // Admins intentionally need full QR rows for scratch-code export, CSV, and assignment management.
-  const { data, error } = await supabase
-    .from('qr_codes')
-    .select('*')
-    .order('created_at', { ascending: false })
+  // Server-side range/count keeps the admin QR panel usable when the table grows.
+  const page = clampAdminPage(options.page)
+  const pageSize = clampAdminPageSize(options.pageSize, 20)
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
 
-  return { data, error }
+  let query = supabase.from('qr_codes').select('*', { count: 'exact' })
+  query = applyAdminQrFilters(query, options)
+  query = applyAdminQrSort(query, options.sortBy)
+
+  const { data, error, count } = await query.range(from, to)
+
+  return {
+    data,
+    error,
+    count: Number(count) || 0,
+    page,
+    pageSize,
+  }
+}
+
+export async function getAdminQrCodeCounts() {
+  const [all, pending, redeemed, batched] = await Promise.all([
+    supabase.from('qr_codes').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('qr_codes')
+      .select('id', { count: 'exact', head: true })
+      .eq('activated', false),
+    supabase
+      .from('qr_codes')
+      .select('id', { count: 'exact', head: true })
+      .eq('activated', true),
+    supabase
+      .from('qr_codes')
+      .select('id', { count: 'exact', head: true })
+      .not('bulk_batch_id', 'is', null),
+  ])
+
+  const firstError = all.error || pending.error || redeemed.error || batched.error
+
+  if (firstError) {
+    return { data: null, error: firstError }
+  }
+
+  return {
+    data: {
+      all: Number(all.count) || 0,
+      pending: Number(pending.count) || 0,
+      redeemed: Number(redeemed.count) || 0,
+      batched: Number(batched.count) || 0,
+    },
+    error: null,
+  }
 }
 
 export async function getMyArticles(userId, isAdmin = false) {

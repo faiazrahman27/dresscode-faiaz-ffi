@@ -7,7 +7,6 @@ import MyCodesPanel from '../components/MyCodesPanel'
 import AccountPanel from '../components/AccountPanel'
 import TemplatesPanel from '../components/TemplatesPanel'
 import AdminQrCodesPanel from '../components/AdminQrCodesPanel'
-import UsersPanel from '../components/UsersPanel'
 import JournalPanel from '../components/JournalPanel'
 import ScanAnalyticsPanel from '../components/ScanAnalyticsPanel'
 import ShopProductsPanel from '../components/ShopProductsPanel'
@@ -16,12 +15,11 @@ import Navbar from '../components/Navbar'
 import {
   createTemplate,
   getAllQrCodes,
+  getAdminQrCodeCounts,
   getAllShopProducts,
   getAllTemplates,
-  getAllUsers,
   getMyArticles,
   getMyQrCodes,
-  getPendingAssignments,
   getScanCountForUserCodes,
   updateMyProfile,
   updateTemplate,
@@ -29,7 +27,7 @@ import {
 
 const DASHBOARD_ACTIVE_TAB_STORAGE_KEY = 'dresscode.dashboard.activeTab'
 
-const ADMIN_ONLY_TABS = ['qr-codes', 'shop-products', 'users', 'templates']
+const ADMIN_ONLY_TABS = ['qr-codes', 'shop-products', 'templates']
 
 const ALL_DASHBOARD_TABS = new Set([
   'my-codes',
@@ -38,13 +36,33 @@ const ALL_DASHBOARD_TABS = new Set([
   'journal',
   'qr-codes',
   'shop-products',
-  'users',
   'templates',
 ])
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
+}
+
+const DEFAULT_ADMIN_QR_QUERY = {
+  page: 1,
+  pageSize: 20,
+  search: '',
+  filter: 'all',
+  sortBy: 'created_desc',
+}
+
+const DEFAULT_ADMIN_QR_META = {
+  count: 0,
+  page: 1,
+  pageSize: 20,
+}
+
+const DEFAULT_ADMIN_QR_COUNTS = {
+  all: 0,
+  pending: 0,
+  redeemed: 0,
+  batched: 0,
 }
 
 const heroStagger = {
@@ -118,9 +136,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState(() => getStoredDashboardTab())
   const [codes, setCodes] = useState([])
   const [scanCount, setScanCount] = useState(0)
-  const [users, setUsers] = useState([])
-  const [pendingAssignments, setPendingAssignments] = useState([])
   const [allQrCodes, setAllQrCodes] = useState([])
+  const [adminQrQuery, setAdminQrQuery] = useState(DEFAULT_ADMIN_QR_QUERY)
+  const [adminQrMeta, setAdminQrMeta] = useState(DEFAULT_ADMIN_QR_META)
+  const [adminQrCounts, setAdminQrCounts] = useState(DEFAULT_ADMIN_QR_COUNTS)
   const [templates, setTemplates] = useState([])
   const [articles, setArticles] = useState([])
   const [shopProducts, setShopProducts] = useState([])
@@ -129,7 +148,7 @@ export default function Dashboard() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [savingQr, setSavingQr] = useState(false)
-  const [savingUsers, setSavingUsers] = useState(false)
+  const [loadingQrCodes, setLoadingQrCodes] = useState(false)
   const [savingShopProducts, setSavingShopProducts] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [error, setError] = useState('')
@@ -182,6 +201,57 @@ export default function Dashboard() {
     [canManageJournal, isAdmin],
   )
 
+  const loadAdminQrCodes = useCallback(
+    async (query = DEFAULT_ADMIN_QR_QUERY) => {
+      if (!isAdmin) return
+
+      setLoadingQrCodes(true)
+
+      const normalizedQuery = {
+        ...DEFAULT_ADMIN_QR_QUERY,
+        ...query,
+      }
+
+      const [qrResult, qrCountsResult] = await Promise.all([
+        getAllQrCodes(normalizedQuery),
+        getAdminQrCodeCounts(),
+      ])
+
+      setLoadingQrCodes(false)
+
+      if (qrResult.error) {
+        setError(qrResult.error.message)
+      } else {
+        setAllQrCodes(qrResult.data || [])
+        setAdminQrMeta({
+          count: qrResult.count || 0,
+          page: qrResult.page || normalizedQuery.page,
+          pageSize: qrResult.pageSize || normalizedQuery.pageSize,
+        })
+      }
+
+      if (qrCountsResult.error) {
+        setError(qrCountsResult.error.message)
+      } else {
+        setAdminQrCounts(qrCountsResult.data || DEFAULT_ADMIN_QR_COUNTS)
+      }
+    },
+    [isAdmin],
+  )
+
+  const handleAdminQrQueryChange = useCallback(
+    (nextQuery) => {
+      const normalizedQuery = {
+        ...DEFAULT_ADMIN_QR_QUERY,
+        ...nextQuery,
+      }
+
+      setAdminQrQuery(normalizedQuery)
+      void loadAdminQrCodes(normalizedQuery)
+    },
+    [loadAdminQrCodes],
+  )
+
   const loadDashboard = useCallback(async () => {
     if (!user || !profile) return
 
@@ -208,35 +278,32 @@ export default function Dashboard() {
 
     if (isAdmin) {
       const [
-        { data: loadedUsers, error: usersError },
-        { data: loadedPending, error: pendingError },
-        { data: qrCodes, error: allCodesError },
+        { data: qrCodes, error: allCodesError, count: qrCount, page: qrPage, pageSize: qrPageSize },
+        { data: loadedQrCounts, error: qrCountsError },
         { data: loadedTemplates, error: templatesError },
         { data: loadedShopProducts, error: shopProductsError },
       ] = await Promise.all([
-        getAllUsers(),
-        getPendingAssignments(),
-        getAllQrCodes(),
+        getAllQrCodes(adminQrQuery),
+        getAdminQrCodeCounts(),
         getAllTemplates(),
         getAllShopProducts(),
       ])
-
-      if (usersError) {
-        setError(usersError.message)
-      } else {
-        setUsers(loadedUsers || [])
-      }
-
-      if (pendingError) {
-        setError(pendingError.message)
-      } else {
-        setPendingAssignments(loadedPending || [])
-      }
 
       if (allCodesError) {
         setError(allCodesError.message)
       } else {
         setAllQrCodes(qrCodes || [])
+        setAdminQrMeta({
+          count: qrCount || 0,
+          page: qrPage || adminQrQuery.page,
+          pageSize: qrPageSize || adminQrQuery.pageSize,
+        })
+      }
+
+      if (qrCountsError) {
+        setError(qrCountsError.message)
+      } else {
+        setAdminQrCounts(loadedQrCounts || DEFAULT_ADMIN_QR_COUNTS)
       }
 
       if (templatesError) {
@@ -251,9 +318,9 @@ export default function Dashboard() {
         setShopProducts(loadedShopProducts || [])
       }
     } else {
-      setUsers([])
-      setPendingAssignments([])
       setAllQrCodes([])
+      setAdminQrMeta(DEFAULT_ADMIN_QR_META)
+      setAdminQrCounts(DEFAULT_ADMIN_QR_COUNTS)
       setTemplates([])
       setShopProducts([])
     }
@@ -275,7 +342,7 @@ export default function Dashboard() {
 
     setHasLoadedDashboard(true)
     setLoading(false)
-  }, [canManageJournal, isAdmin, profile, user])
+  }, [adminQrQuery, canManageJournal, isAdmin, profile, user])
 
   useEffect(() => {
     loadDashboard()
@@ -535,17 +602,19 @@ export default function Dashboard() {
       return (
         <AdminQrCodesPanel
           qrCodes={allQrCodes}
+          qrMeta={adminQrMeta}
+          qrCounts={adminQrCounts}
+          loadingQrCodes={loadingQrCodes}
+          onQueryChange={handleAdminQrQueryChange}
           templates={templates}
           currentUserId={user.id}
-          onCreated={(newQrs) => setAllQrCodes((prev) => [...newQrs, ...prev])}
+          onCreated={() => loadAdminQrCodes(adminQrQuery)}
           onUpdated={(updatedQr) =>
             setAllQrCodes((prev) =>
               prev.map((item) => (item.id === updatedQr.id ? updatedQr : item)),
             )
           }
-          onDeleted={(deletedId) =>
-            setAllQrCodes((prev) => prev.filter((item) => item.id !== deletedId))
-          }
+          onDeleted={() => loadAdminQrCodes(adminQrQuery)}
           saving={savingQr}
           setSaving={setSavingQr}
           setFeedback={setFeedback}
@@ -569,39 +638,6 @@ export default function Dashboard() {
           onUpdated={(updatedProduct) =>
             setShopProducts((prev) =>
               prev.map((item) => (item.id === updatedProduct.id ? updatedProduct : item)),
-            )
-          }
-        />
-      )
-    }
-
-    if (resolvedActiveTab === 'users') {
-      if (!isAdmin) return renderUnavailablePanel()
-
-      return (
-        <UsersPanel
-          users={users}
-          qrCodes={allQrCodes}
-          pendingAssignments={pendingAssignments}
-          currentUserId={user.id}
-          saving={savingUsers}
-          setSaving={setSavingUsers}
-          setFeedback={setFeedback}
-          setError={setError}
-          onUserUpdated={(updatedUser) =>
-            setUsers((prev) =>
-              prev.map((item) => (item.id === updatedUser.id ? updatedUser : item)),
-            )
-          }
-          onPendingCreated={(newPending) =>
-            setPendingAssignments((prev) => [newPending, ...prev])
-          }
-          onPendingDeleted={(deletedId) =>
-            setPendingAssignments((prev) => prev.filter((item) => item.id !== deletedId))
-          }
-          onQrUpdated={(updatedQr) =>
-            setAllQrCodes((prev) =>
-              prev.map((item) => (item.id === updatedQr.id ? updatedQr : item)),
             )
           }
         />
@@ -668,7 +704,7 @@ export default function Dashboard() {
                     variants={fadeUp}
                     transition={{ duration: 0.45 }}
                   >
-                    Manage your codes, profile, articles, templates, users, shop products, platform access, and scan analytics.
+                    Manage your codes, profile, articles, templates, shop products, platform content, and scan analytics.
                   </motion.p>
                 </div>
 
