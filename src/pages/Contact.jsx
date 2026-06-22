@@ -458,6 +458,12 @@ export default function Contact() {
                     </div>
                   </div>
 
+                  <div className="contact-privacy-note">
+                    By sending this message, you agree that Dresscode may use the details
+                    you provide to review and respond to your inquiry. Read the{' '}
+                    <Link to="/privacy-policy">Privacy Policy</Link> for more information.
+                  </div>
+
                   <button
                     type="submit"
                     className="btn btn-primary glow-btn"

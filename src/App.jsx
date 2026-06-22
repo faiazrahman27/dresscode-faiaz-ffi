@@ -16,8 +16,13 @@ import Solutions from './pages/Solutions'
 import UseCases from './pages/UseCases'
 import WhyItMatters from './pages/WhyItMatters'
 import Shop from './pages/Shop'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import CookiePolicy from './pages/CookiePolicy'
+import TermsOfService from './pages/TermsOfService'
+import LegalNotice from './pages/LegalNotice'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import CookieBanner from './components/CookieBanner'
 import ProtectedRoute from './components/ProtectedRoute'
 import PageEditor from './pages/PageEditor'
 
@@ -158,6 +163,42 @@ export default function App() {
           />
 
           <Route
+            path="/privacy-policy"
+            element={
+              <RouteShell>
+                <PrivacyPolicy />
+              </RouteShell>
+            }
+          />
+
+          <Route
+            path="/cookie-policy"
+            element={
+              <RouteShell>
+                <CookiePolicy />
+              </RouteShell>
+            }
+          />
+
+          <Route
+            path="/terms-of-service"
+            element={
+              <RouteShell>
+                <TermsOfService />
+              </RouteShell>
+            }
+          />
+
+          <Route
+            path="/legal-notice"
+            element={
+              <RouteShell>
+                <LegalNotice />
+              </RouteShell>
+            }
+          />
+
+          <Route
             path="/shop"
             element={
               <RouteShell standalone>
@@ -227,6 +268,8 @@ export default function App() {
       </AnimatePresence>
 
       {!isStandalone && <Footer />}
+
+      <CookieBanner />
     </div>
   )
 }

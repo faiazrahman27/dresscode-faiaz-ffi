@@ -272,7 +272,7 @@ export default function Portal() {
     }
 
     if (!registerForm.acceptTerms) {
-      setError('You must accept the Terms of Service.')
+      setError('You must accept the Terms of Service and acknowledge the Privacy Policy.')
       return
     }
 
@@ -735,7 +735,27 @@ export default function Portal() {
                         }
                         className="mt-1"
                       />
-                      <span>I agree to the Terms of Service.</span>
+                      <span>
+                        I agree to the{' '}
+                        <Link
+                          to="/terms-of-service"
+                          className="text-[#5ECFCF] underline decoration-[rgba(94,207,207,0.45)] underline-offset-4 transition hover:text-white"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Terms of Service
+                        </Link>{' '}
+                        and acknowledge the{' '}
+                        <Link
+                          to="/privacy-policy"
+                          className="text-[#5ECFCF] underline decoration-[rgba(94,207,207,0.45)] underline-offset-4 transition hover:text-white"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Privacy Policy
+                        </Link>
+                        .
+                      </span>
                     </label>
 
                     <button type="submit" disabled={loading} className="btn btn-primary glow-btn w-full">
