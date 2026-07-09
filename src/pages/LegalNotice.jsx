@@ -29,8 +29,8 @@ const noticeItems = [
   },
   {
     label: 'Contact',
-    value: 'hello@dresscode.bio',
-    href: 'mailto:hello@dresscode.bio',
+    value: 'admin@dresscode.bio',
+    href: 'mailto:admin@dresscode.bio',
   },
 ]
 
@@ -178,7 +178,7 @@ export default function LegalNotice() {
             <LegalSection eyebrow="2" title="Contact routes">
               <p>
                 You can contact Dresscode at{' '}
-                <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a> for:
+                <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a> for:
               </p>
 
               <ul>
@@ -238,7 +238,7 @@ export default function LegalNotice() {
               <p>
                 Report suspected unauthorized QR activation, impersonation, harmful
                 content, phishing, spam, misleading product claims, abuse, or security
-                concerns to <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a>.
+                concerns to <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a>.
               </p>
 
               <p>

@@ -301,7 +301,7 @@ export default function CookiePolicy() {
             <LegalSection eyebrow="9" title="Contact">
               <p>
                 For questions about cookies, local storage, privacy, or data choices,
-                contact <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a>.
+                contact <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a>.
               </p>
 
               <p>

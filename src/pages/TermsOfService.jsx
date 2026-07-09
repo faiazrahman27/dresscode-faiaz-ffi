@@ -453,7 +453,7 @@ export default function TermsOfService() {
             <LegalSection eyebrow="18" title="Contact">
               <p>
                 For questions about these terms, contact{' '}
-                <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a>.
+                <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a>.
               </p>
 
               <p>

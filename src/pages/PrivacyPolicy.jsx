@@ -230,7 +230,7 @@ export default function PrivacyPolicy() {
 
               <p>
                 For privacy questions, data requests, or legal notices, contact us at{' '}
-                <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a>.
+                <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a>.
               </p>
 
               <p>
@@ -404,7 +404,7 @@ export default function PrivacyPolicy() {
               </ul>
 
               <p>
-                To make a request, contact <a href="mailto:hello@dresscode.bio">hello@dresscode.bio</a>.
+                To make a request, contact <a href="mailto:admin@dresscode.bio">admin@dresscode.bio</a>.
                 We may need to verify your identity before completing a request.
               </p>
             </LegalSection>
